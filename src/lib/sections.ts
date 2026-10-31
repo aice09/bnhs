@@ -40,7 +40,7 @@ export const SECTIONS: Section[] = [
     { key: 'teams', title: 'Teams & sports', layout: 'cards', hint: 'Title = team / sport, Meta = coach or level, Description = details.' },
     { key: 'schedule', title: 'Schedules & results', layout: 'schedule', groups: true, hint: 'Title = event / match, Meta = date, Category = sport, Extra = venue or result.' },
     { key: 'facilities', title: 'Facilities', layout: 'cards', groups: true, hint: 'Title = facility, Description = details, Image = photo.' },
-  ] },
+  ], cta: { label: 'Athletics login', href: '/portal/login?as=athletics', icon: 'right-to-bracket' } },
   { key: 'student-groups', label: 'Student Groups', icon: 'people-group', singular: 'Student group', menu: 'student-life', excludeGroupTypes: ['Research Center', 'Sports Team', 'Office'], blocks: [
     { key: 'activities', title: 'Projects & activities', layout: 'cards', groups: true, hint: 'Title = activity, Meta = date, Description = details, Image = photo.' },
   ],
@@ -62,8 +62,9 @@ export const SECTIONS: Section[] = [
     { key: 'programs', title: 'Scholarship programs', layout: 'cards', hint: 'Title = program, Meta = provider, Description = who can apply.' },
   ], cta: { label: 'Ask about scholarships', href: '/contact', icon: 'circle-question' } },
   { key: 'partnerships', label: 'Partners', icon: 'handshake', singular: 'Partner', menu: '', optional: true, blocks: [
-    { key: 'partners', title: 'Our partners', layout: 'cards', hint: 'Title = partner, Meta = type, Description = how we work together, Image = logo.' },
-  ], cta: { label: 'Become a partner', href: '/contact', icon: 'handshake' } },
+    { key: 'benefits', title: 'Partnership benefits', layout: 'cards', hint: 'Title = what a partner can do, Description = details, Icon = Font Awesome name.' },
+    { key: 'partners', title: 'Our partners', layout: 'cards', hint: 'Title = partner, Meta = type, Description = how we work together, Category = tab on the page (e.g. Government, Education, Industry, Community), Image = logo, Link = partner website (makes the card clickable). More than 8 partners become a carousel.' },
+  ], cta: { label: 'Become a partner', href: '/partnerships/apply', icon: 'handshake' } },
 ];
 
 export const SECTION_KEYS = SECTIONS.map((s) => s.key);
@@ -73,7 +74,7 @@ export const ABOUT_SLUGS = ['about-us', 'history', 'mission-vision', 'philosophy
 
 // Where a group of a given type can publish entries (its own page + the school-wide page).
 const OFFICE_SECTIONS: Record<string, string[]> = {
-  research: ['research', 'innovation'], athletics: ['athletics'], sgo: ['student-groups'], 'student-groups': ['student-groups'], alumni: ['alumni'], library: ['library'], sdg: ['sdg'],
+  research: ['research', 'innovation'], athletics: ['athletics'], sgo: ['student-groups'], 'student-groups': ['student-groups'], alumni: ['alumni'], library: ['library'], sdg: ['sdg'], partnership: ['partnerships'],
 };
 export function groupBlocks(type: string, dept = '', isOffice = false): { section: string; block: Block; label: string }[] {
   const out: { section: string; block: Block; label: string }[] = [];

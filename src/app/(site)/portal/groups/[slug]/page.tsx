@@ -9,7 +9,7 @@ import ImageField from '@/components/ImageField';
 import { groupBlocks, sectionByKey } from '@/lib/sections';
 import EntryForm from './EntryForm';
 import {
-  addGroupItem, addGroupMember, decideAlumni, decideApplication, decideGroup, decideMember, requestGroup, deleteGroupEntry, deleteGroupItem, deleteGroupPost, removeGroupMember, saveGroupEntry, saveGroupPage, updateGroupMember,
+  addGroupItem, addGroupMember, decideAlumni, decideApplication, decidePartnerRequest, decideGroup, decideLeave, decideMember, requestGroup, deleteGroupEntry, deleteGroupItem, deleteGroupPost, removeGroupMember, saveGroupEntry, saveGroupPage, updateGroupMember,
 } from '../../actions';
 
 export const metadata = { title: 'Group workspace', robots: { index: false, follow: false } };
@@ -28,7 +28,7 @@ export default async function Workspace({ params, searchParams }: { params: Prom
   const can = (p: string) => acc.perms.has(p);
   const sp = await searchParams;
   const targets = groupBlocks(g.type, g.dept, g.is_office);
-  const [members, items, posts, entries, pendingMembers, children, requests, apps, parent, alumniPending] = await Promise.all([
+  const [members, items, posts, entries, pendingMembers, children, requests, apps, partnerReqs, parent, alumniPending] = await Promise.all([
     membersOf(g.id),
     query('SELECT * FROM group_items WHERE group_id=$1 ORDER BY created_at DESC', [g.id]),
     query<any>(`SELECT p.id, p.title, p.status, p.stage, p.author_id, p.review_note, p.slug, u.name AS author FROM posts p LEFT JOIN users u ON u.id = p.author_id
@@ -40,6 +40,7 @@ export default async function Workspace({ params, searchParams }: { params: Prom
         FROM groups WHERE parent_id=$1 AND status='approved' ORDER BY name`, [g.id]) : Promise.resolve([] as any[]),
     g.is_office ? query<any>(`SELECT x.id, x.name, x.summary, x.info, u.name AS requester, u.email FROM groups x LEFT JOIN users u ON u.id=x.requested_by WHERE x.parent_id=$1 AND x.status='pending' ORDER BY x.id`, [g.id]) : Promise.resolve([] as any[]),
     g.dept === 'admission' ? query<any>('SELECT * FROM applications ORDER BY (status=\'pending\') DESC, created_at DESC LIMIT 100') : Promise.resolve([] as any[]),
+    g.dept === 'partnership' ? query<any>("SELECT * FROM partner_requests ORDER BY (status='pending') DESC, created_at DESC LIMIT 100") : Promise.resolve([] as any[]),
     g.parent_id ? one<any>('SELECT slug, name FROM groups WHERE id=$1', [g.parent_id]) : Promise.resolve(null),
     g.dept === 'alumni' ? query<any>("SELECT u.id, u.name, u.email, a.grad_year FROM users u LEFT JOIN alumni_profiles a ON a.user_id=u.id WHERE u.role='alumni' AND u.status='pending' ORDER BY u.created_at") : Promise.resolve([] as any[]),
   ]);
@@ -150,6 +151,7 @@ export default async function Workspace({ params, searchParams }: { params: Prom
             <details style={{ marginTop: 12 }}><summary><b>Request a new {dept.childLabel}</b></summary>
               <form action={requestGroup.bind(null, slug)} style={{ marginTop: 10 }}>
                 <div className="fld"><label>Name</label><input name="name" required maxLength={120} /></div>
+                {dept?.kinds && <div className="fld"><label>Kind</label><select name="type">{dept.kinds.map((k) => <option key={k}>{k}</option>)}</select></div>}
                 <div className="fld"><label>What is it about?</label><input name="summary" maxLength={300} /></div>
                 <div className="fld"><label>Proposed coach / adviser (name or email)</label><input name="coach" maxLength={200} /></div>
                 <button className="btn sm">Send request</button>
@@ -165,6 +167,21 @@ export default async function Workspace({ params, searchParams }: { params: Prom
               <p style={{ margin: '8px 0' }}>{a.email}{a.phone && ` · ${a.phone}`}{a.prev_school && ` · Previous school: ${a.prev_school}`}</p>
               {a.message && <p style={{ margin: '0 0 8px', whiteSpace: 'pre-line' }}>{a.message}</p>}
               {can('members') && <form action={decideApplication.bind(null, slug, a.id)} className="row">
+                <select name="status" defaultValue={a.status}><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Declined</option></select>
+                <input name="note" defaultValue={a.note} placeholder="Note to file" style={{ flex: 1, minWidth: 200 }} /><button className="btn sm">Save</button></form>}
+            </details>))}
+        </div>)}
+
+      {g.dept === 'partnership' && (
+        <div className="panel" id="partner-requests"><h2 style={{ marginTop: 0 }}>Partnership requests ({partnerReqs.filter((a: any) => a.status === 'pending').length} pending)</h2>
+          {partnerReqs.length === 0 && <div className="empty">No requests yet.</div>}
+          {partnerReqs.map((a: any) => (
+            <details key={a.id} style={{ borderBottom: '1px solid var(--line)', padding: '8px 0' }}>
+              <summary><b>{a.org}</b> · {a.org_type} <span className={'badge' + (a.status === 'pending' ? ' warn' : a.status === 'rejected' ? ' bad' : '')}>{a.status}</span></summary>
+              <p style={{ margin: '8px 0' }}>{a.contact}{a.position && ` (${a.position})`} · {a.email}{a.phone && ` · ${a.phone}`}</p>
+              {a.interests && <p style={{ margin: '0 0 8px' }}><b>Interested in:</b> {a.interests}</p>}
+              {a.message && <p style={{ margin: '0 0 8px', whiteSpace: 'pre-line' }}>{a.message}</p>}
+              {can('members') && <form action={decidePartnerRequest.bind(null, slug, a.id)} className="row">
                 <select name="status" defaultValue={a.status}><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Declined</option></select>
                 <input name="note" defaultValue={a.note} placeholder="Note to file" style={{ flex: 1, minWidth: 200 }} /><button className="btn sm">Save</button></form>}
             </details>))}
@@ -193,29 +210,41 @@ export default async function Workspace({ params, searchParams }: { params: Prom
             </div>))}
         </div>)}
 
+      {members.some((x) => x.leave_requested && x.role === 'member') && (
+        <div className="panel" id="leave"><h2 style={{ marginTop: 0 }}>Requests to leave</h2>
+          {members.filter((x) => x.leave_requested && x.role === 'member').map((lm) => (
+            <div className="row" key={lm.user_id} style={{ justifyContent: 'space-between', borderBottom: '1px solid var(--line)', padding: '6px 0' }}>
+              <span><b>{lm.name}</b> <small>{lm.email}</small></span>
+              {can('members') ? <span className="row">
+                <form action={decideLeave.bind(null, slug, lm.user_id, true)}><button className="btn sm">Approve</button></form>
+                <form action={decideLeave.bind(null, slug, lm.user_id, false)}><button className="btn sm out">Keep in group</button></form></span> : <small>Awaiting approval</small>}
+            </div>))}
+        </div>)}
+
       <div className="panel" id="members"><h2 style={{ marginTop: 0 }}>Members ({members.length})</h2>
         {members.map((mm) => (
           <details key={mm.user_id} style={{ borderBottom: '1px solid var(--line)', padding: '8px 0' }}>
             <summary><Avatar seed={mm.user_id} name={mm.name} size={26} className="inl" /> <b>{mm.name}</b> · {mm.title || mm.role} <small>({mm.email})</small></summary>
-            {can('members') ? (
+            {mm.leave_requested && <div className="badge warn" style={{ marginTop: 6 }}>Asked to leave</div>}
+            {can('roles') ? (
               <form action={updateGroupMember.bind(null, slug, mm.user_id)} style={{ marginTop: 10 }}>
                 <div className="row">
                   <select name="role" defaultValue={mm.role}>{Object.keys(GROUP_ROLES).map((r) => <option key={r}>{r}</option>)}</select>
                   <input name="title" defaultValue={mm.title} placeholder="Position (e.g. Editor-in-Chief)" />
                 </div>
-                <div className="help">Roles: manager = everything, editor = write news and manage events, member = read members-only pages. Extra permissions:</div>
+                <div className="help">Roles: manager = everything, coach and leader = write news, manage events and accept or invite members, editor = write news and manage events, member = read members-only pages. Extra permissions:</div>
                 {GROUP_PERMS.map(([k, l]) => (
                   <label key={k} style={{ display: 'flex', gap: 8, fontWeight: 400 }}><input type="checkbox" name={'perm_' + k} defaultChecked={mm.permissions.includes(k)} style={{ width: 'auto' }} /> {l}</label>))}
                 <div className="row" style={{ marginTop: 8 }}><button className="btn sm">Save</button></div>
               </form>) : null}
-            {can('members') && <form action={removeGroupMember.bind(null, slug, mm.user_id)}><button className="btn sm danger" style={{ marginTop: 6 }}>Remove from group</button></form>}
+            {can('members') && (mm.role === 'member' || can('roles')) && <form action={removeGroupMember.bind(null, slug, mm.user_id)}><button className="btn sm danger" style={{ marginTop: 6 }}>Remove from group</button></form>}
           </details>))}
         {can('members') && (
           <form action={addGroupMember.bind(null, slug)} className="row" style={{ marginTop: 14 }}>
             <input name="email" type="email" placeholder="Member's account email" required style={{ flex: 1, minWidth: 200 }} />
-            <select name="role" defaultValue="member">{Object.keys(GROUP_ROLES).map((r) => <option key={r}>{r}</option>)}</select>
-            <input name="title" placeholder="Position" />
-            <button className="btn sm">Add member</button>
+            {can('roles') && <select name="role" defaultValue="member">{Object.keys(GROUP_ROLES).map((r) => <option key={r}>{r}</option>)}</select>}
+            {can('roles') && <input name="title" placeholder="Position (e.g. Head coach, Team captain)" />}
+            <button className="btn sm">{can('roles') ? 'Add member' : 'Invite member'}</button>
           </form>)}
       </div>
     </div>

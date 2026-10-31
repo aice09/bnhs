@@ -11,6 +11,8 @@ const KINDS: Record<string, { title: string; icon: string; text: string }> = {
   student: { title: 'Student login', icon: 'user-graduate', text: 'Access your student groups, organizations and publication workspace.' },
   alumni: { title: 'Alumni login', icon: 'people-roof', text: 'Manage your alumni profile and stay connected with the school.' },
   research: { title: 'Research center login', icon: 'microscope', text: 'For research center members: manage your projects and write research news.' },
+  athletics: { title: 'Athletics login', icon: 'medal', text: 'For student athletes, team leaders, coaches (including outside coaches) and sports managers.' },
+  partner: { title: 'Partner login', icon: 'handshake', text: 'For partner organizations and the partnerships team: review applications and manage partnerships.' },
 };
 
 export default async function Login({ searchParams }: { searchParams: Promise<{ as?: string; next?: string }> }) {

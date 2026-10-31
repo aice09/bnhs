@@ -203,18 +203,38 @@ Enrolled Junior High School and Senior High School learners who meet the require
 *Add the real programs below in Admin → Scholarships, then enable this page.*`,
   },
   partnerships: {
-    title: 'Partnerships', menu: '', sort: 1, enabled: false, subtitle: 'Working together for our learners',
-    content: `BNNHS works with parents and the PTA, the barangay and municipal government, other schools and local businesses to give learners better opportunities, including school-based work immersion for Senior High School.
+    title: 'Partnerships', menu: '', sort: 1, enabled: true, subtitle: 'Working together for our learners',
+    content: `BNNHS welcomes collaboration with parents and the PTA, barangay and municipal government, other schools and local businesses to create opportunities for learners, including school-based work immersion for Senior High School.
 
 ## Become a partner
 
-We welcome partners for learner immersion, donations, training, scholarships and community projects. [Contact the school](/contact) to start a conversation.
+We welcome partners for learner immersion, donations, training, scholarships and community projects. [Send a partnership request](/partnerships/apply) or [contact the school](/contact) to start a conversation.
 
-*Add partners in Admin → Partners, then enable this page.*`,
+*Manage benefits and partner examples in Admin → Partners. Upload official partner logos in each entry.*`,
   },
 };
 
 export const ITEMS = {
+  partnerships: [
+    ['College scholarships', 'Partner benefit', 'Fund or sponsor college scholarships for deserving graduates, from full grants to book and allowance support.', 'graduation-cap', 'benefits'],
+    ['Educational assistance', 'Partner benefit', 'Support learners with school supplies, uniforms, allowances, meals and learning materials.', 'hand-holding-heart', 'benefits'],
+    ['Training and workshops', 'Partner benefit', 'Run skills training, career talks and workshops for learners and teachers, including TVL and work immersion.', 'chalkboard-user', 'benefits'],
+    ['School visits and immersion', 'Partner benefit', 'Host learners for visits and work immersion, or visit the campus to meet students and teachers.', 'bus', 'benefits'],
+    ['Certifications', 'Partner benefit', 'Offer competency assessments and certifications so learners graduate with recognized skills.', 'certificate', 'benefits'],
+    ['Community projects', 'Partner benefit', 'Co-organize clean-ups, feeding programs, sports and other projects that help the barangay.', 'people-roof', 'benefits'],
+    ['Municipality of Sipocot', 'Example · Local government', 'Example opportunity: support for school programs, sports events and community activities in Sipocot. Not a confirmed partnership.', 'landmark', 'partners', '', 'Government'],
+    ['Province of Camarines Sur', 'Example · Provincial government', 'Example opportunity: provincial programs for education, scholarships and youth development. Not a confirmed partnership.', 'building-columns', 'partners', '', 'Government'],
+    ['Central Bicol State University of Agriculture (CBSUA)', 'Example · State university', 'Example opportunity: college pathways, scholarships and academic partnerships for graduating learners. Not a confirmed partnership.', 'school', 'partners', '', 'Education'],
+    ['TESDA', 'Example · Technical-vocational training', 'Example opportunity: assessment and certification for Senior High TVL learners and skills training. Not a confirmed partnership.', 'screwdriver-wrench', 'partners', '', 'Government'],
+    ['Local industry partners', 'Business and industry', 'Example opportunity: work immersion venues and career talks for Senior High School learners. Not a confirmed partnership.', 'industry', 'partners', '', 'Industry'],
+    ['DepEd Schools Division of Camarines Sur', 'Example · Education agency', 'Example opportunity: training, learning resources and school programs. Not a confirmed partnership.', 'school-flag', 'partners', '', 'Education'],
+    ['Sipocot National High School', 'Example · Neighboring school', 'Example opportunity: shared teacher training, academic and sports activities. Not a confirmed partnership.', 'school', 'partners', '', 'Education'],
+    ['Barangay Bolo Norte', 'Example · Local community', 'Example opportunity: community projects, clean-ups and learner support. Not a confirmed partnership.', 'people-roof', 'partners', '', 'Community'],
+    ['Parents-Teachers Association', 'Example · Community group', 'Example opportunity: learner assistance, school improvement and events. Not a confirmed partnership.', 'people-group', 'partners', '', 'Community'],
+    ['Rural Health Unit, Sipocot', 'Example · Health services', 'Example opportunity: health talks, vaccination and wellness programs. Not a confirmed partnership.', 'heart-pulse', 'partners', '', 'Government'],
+    ['Local electrical and tailoring businesses', 'Example · Business and industry', 'Example opportunity: work immersion venues for TVL EIM and Tailoring learners. Not a confirmed partnership.', 'screwdriver-wrench', 'partners', '', 'Industry'],
+    ['Local cooperatives and enterprises', 'Example · Business and industry', 'Example opportunity: career talks, internships and donations. Not a confirmed partnership.', 'shop', 'partners', '', 'Industry'],
+  ],
   sdg: [
     ['Learning close to home', 'Ongoing · SDG 4', 'Junior and Senior High School education for learners of Bolo Norte and nearby barangays.', 'book-open', 'projects'],
     ['Campus clean-up and tree care', 'Student groups · SDG 13, 15', 'Learners and volunteers keep the school and its surroundings clean and green.', 'leaf', 'projects'],

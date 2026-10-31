@@ -128,6 +128,11 @@ ALTER TABLE groups ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'approv
 ALTER TABLE groups ADD COLUMN IF NOT EXISTS requested_by int REFERENCES users(id) ON DELETE SET NULL;
 ALTER TABLE group_members ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active';
 ALTER TABLE group_members ADD COLUMN IF NOT EXISTS left_at timestamptz;
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS leave_requested boolean NOT NULL DEFAULT false;
+CREATE TABLE IF NOT EXISTS group_member_log (
+  id serial PRIMARY KEY, group_id int NOT NULL REFERENCES groups(id) ON DELETE CASCADE, user_id int NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  action text NOT NULL, actor_id int REFERENCES users(id) ON DELETE SET NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS group_member_log_user ON group_member_log(user_id, created_at DESC);
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS stage text NOT NULL DEFAULT '';
 CREATE TABLE IF NOT EXISTS item_people (
   item_id int NOT NULL REFERENCES items(id) ON DELETE CASCADE, user_id int NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -141,22 +146,37 @@ CREATE TABLE IF NOT EXISTS applications (
   grade text NOT NULL DEFAULT '', prev_school text NOT NULL DEFAULT '', message text NOT NULL DEFAULT '',
   status text NOT NULL DEFAULT 'pending', note text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now());
 `);
+await q(`CREATE TABLE IF NOT EXISTS partner_requests (
+  id serial PRIMARY KEY, org text NOT NULL, org_type text NOT NULL DEFAULT '', contact text NOT NULL, position text NOT NULL DEFAULT '',
+  email text NOT NULL, phone text NOT NULL DEFAULT '', interests text NOT NULL DEFAULT '', message text NOT NULL DEFAULT '',
+  status text NOT NULL DEFAULT 'pending', note text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now())`);
 const OFFICES = [
   ['research-office', 'Research & Innovation Office', 'research', 'flask', ['Research Center'], false],
   ['athletics-office', 'Athletics Office', 'athletics', 'medal', ['Sports Team'], false],
   ['student-government', 'Student Government Body', 'sgo', 'landmark', [], true],
   ['campus-publication', 'Campus Publication', 'publication', 'newspaper', ['Publication'], true],
   ['alumni-association', 'Alumni Association', 'alumni', 'user-graduate', [], true],
-  ['student-groups-office', 'Student Groups Office', 'student-groups', 'people-group', ['Student Organization', 'Academic Club', 'Arts & Culture', 'Community Service', 'Other'], false],
+  ['student-groups-office', 'Student Groups Office', 'student-groups', 'people-group', ['Project', 'Activity', 'SGO', 'Subject Club', 'Publication Team', 'Student Organization', 'Academic Club', 'Arts & Culture', 'Community Service', 'Other'], false],
   ['library-office', 'Library', 'library', 'book-open', [], true],
   ['admission-office', 'Admission Office', 'admission', 'clipboard-check', [], false],
   ['sdg-office', 'SDG Office', 'sdg', 'earth-asia', [], false],
+  ['partnership-office', 'Partnerships Office', 'partnership', 'handshake', [], false],
 ];
 for (const [slug, name, dept, icon, childTypes, listed] of OFFICES) {
   await q(`INSERT INTO groups(slug,name,type,icon,dept,is_office,listed,summary) VALUES($1,$2,'Office',$3,$4,true,$5,$6) ON CONFLICT (slug) DO NOTHING`,
     [slug, name, icon, dept, listed, name + ' office']);
   if (childTypes.length)
     await q(`UPDATE groups SET parent_id=(SELECT id FROM groups WHERE slug=$1), dept=$2 WHERE parent_id IS NULL AND NOT is_office AND type = ANY($3)`, [slug, dept, childTypes]);
+}
+if (!(await q("SELECT 1 FROM settings WHERE key='seeded:sports'")).rows.length) {
+  const SPORTS = [['basketball', 'Basketball', 'basketball'], ['volleyball', 'Volleyball', 'volleyball'], ['badminton', 'Badminton', 'table-tennis-paddle-ball'], ['table-tennis', 'Table Tennis', 'table-tennis-paddle-ball'],
+    ['track-and-field', 'Track and Field', 'person-running'], ['chess', 'Chess', 'chess'], ['arnis', 'Arnis', 'hand-fist'], ['sepak-takraw', 'Sepak Takraw', 'futbol']];
+  for (const [slug, name, icon] of SPORTS)
+    await q(`INSERT INTO groups(slug,name,type,icon,dept,parent_id,summary,listed) VALUES($1,$2,'Sports Team',$3,'athletics',(SELECT id FROM groups WHERE slug='athletics-office'),$4,true) ON CONFLICT (slug) DO NOTHING`,
+      ['sport-' + slug, name, icon, `${name} team of the school. Apply to join; the coach, team leader or manager approves your request.`]);
+  await q("UPDATE groups SET type='Subject Club' WHERE slug IN ('science-club','math-club','filipino-club','araling-panlipunan-club') AND type='Student Organization'");
+  await q("UPDATE groups SET type='SGO' WHERE slug='student-government-organization' AND type='Student Organization'");
+  await q("INSERT INTO settings(key,value) VALUES('seeded:sports','1')");
 }
 for (const [k, v] of Object.entries({"sdg_home": "yes", "sdg_focus": "", "hero_image": "/seed/ph-hs-2.jpg", "hero_quote": "Learning. Character. Community. For every learner of Bolo Norte.", "hero_video_on": "yes", "hero_video_label": "Watch our story", "hero_video_url": "", "hero_video_mode": "modal"}))
   await q('INSERT INTO settings(key,value) VALUES($1,$2) ON CONFLICT DO NOTHING', [k, v]);
@@ -183,8 +203,8 @@ for (const [section, rows] of Object.entries(profile.ITEMS)) {
     const exists = (await q('SELECT 1 FROM items WHERE section=$1 AND block=$2 LIMIT 1', [section, block])).rowCount;
     if (!exists) {
       let i = 1;
-      for (const [title, meta, description, icon, blk = '', url = ''] of rows.filter((r) => (r[4] || '') === block))
-        await q('INSERT INTO items(section,title,meta,description,icon,block,url,sort) VALUES($1,$2,$3,$4,$5,$6,$7,$8)', [section, title, meta, description, icon, blk, url, i++]);
+      for (const [title, meta, description, icon, blk = '', url = '', category = ''] of rows.filter((r) => (r[4] || '') === block))
+        await q('INSERT INTO items(section,title,meta,description,icon,block,url,category,sort) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)', [section, title, meta, description, icon, blk, url, category, i++]);
     }
     await q("INSERT INTO settings(key,value) VALUES($1,'1') ON CONFLICT DO NOTHING", [key]);
   }

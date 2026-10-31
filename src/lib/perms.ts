@@ -19,11 +19,14 @@ export const GROUP_PERMS: [string, string][] = [
   ['publish', 'Publish group news without review'],
   ['edit', 'Edit the group page'],
   ['items', 'Manage events, projects & resources'],
-  ['members', 'Manage members'],
+  ['members', 'Accept, decline and invite members'],
+  ['roles', 'Assign managers, coaches and leaders'],
 ];
 
 export const GROUP_ROLES: Record<string, string[]> = {
-  manager: ['post', 'publish', 'edit', 'items', 'members'],
+  manager: ['post', 'publish', 'edit', 'items', 'members', 'roles'],
+  coach: ['post', 'items', 'members'],
+  leader: ['post', 'items', 'members'],
   editor: ['post', 'items'],
   member: [],
 };
@@ -34,6 +37,7 @@ export const ACCOUNT_ROLES: [string, string][] = [
   ['student', 'Student'],
   ['alumni', 'Alumni'],
   ['researcher', 'Research center member'],
+  ['coach', 'Coach / outside personnel'],
   ['member', 'Other member'],
 ];
 
@@ -42,16 +46,17 @@ export const GROUP_TYPES = [
 ];
 
 // Offices are the school departments. Each has managers; teams, centers and clubs belong to an office.
-export const DEPTS: Record<string, { name: string; childLabel: string; childType: string }> = {
+export const DEPTS: Record<string, { name: string; childLabel: string; childType: string; kinds?: string[] }> = {
   research: { name: 'Research & Innovation', childLabel: 'research center', childType: 'Research Center' },
   athletics: { name: 'Athletics', childLabel: 'sports team', childType: 'Sports Team' },
-  'student-groups': { name: 'Student Groups', childLabel: 'student group', childType: 'Student Organization' },
+  'student-groups': { name: 'Student Groups', childLabel: 'student group', childType: 'Student Organization', kinds: ['Project', 'Activity', 'SGO', 'Subject Club', 'Publication Team', 'Student Organization'] },
   sgo: { name: 'Student Government', childLabel: '', childType: '' },
   publication: { name: 'Campus Publication', childLabel: '', childType: '' },
   alumni: { name: 'Alumni', childLabel: '', childType: '' },
   library: { name: 'Library', childLabel: '', childType: '' },
   admission: { name: 'Admission', childLabel: '', childType: '' },
   sdg: { name: 'SDG', childLabel: '', childType: '' },
+  partnership: { name: 'Partnerships', childLabel: '', childType: '' },
 };
 
 export type Account = { id: number; email: string; name: string; role: string; status: string; permissions: string[] };

@@ -7,8 +7,9 @@ import { requireUser } from '@/lib/auth';
 import { invalidateCache, rateLimit } from '@/lib/cache';
 import { normTags, slugify } from '@/lib/content';
 import { normSdg } from '@/lib/sdg';
+import { PARTNER_INTERESTS, PARTNER_TYPES } from '@/lib/partners';
 import { one, query } from '@/lib/db';
-import { accessFor, addMember, managerCount, removeMember, reviewQueue, routePost, saveMember } from '@/lib/groups';
+import { accessFor, addMember, logMember, managerCount, removeMember, reviewQueue, routePost, saveMember } from '@/lib/groups';
 import { DEPTS, GROUP_PERMS, GROUP_ROLES, hasPerm } from '@/lib/perms';
 import { groupBlocks } from '@/lib/sections';
 
@@ -128,15 +129,16 @@ export async function deleteGroupEntry(slug: string, id: number) {
 export async function addGroupMember(slug: string, fd: FormData) {
   const { group, perms } = await access(slug);
   if (!perms.has('members')) redirect(`/portal/groups/${slug}?denied=1`);
-  const role = str(fd, 'role', 20);
+  // Leaders and coaches can invite members; only managers assign roles.
+  const role = perms.has('roles') ? str(fd, 'role', 20) : 'member';
   const err = Object.keys(GROUP_ROLES).includes(role) ? await addMember(group.id, str(fd, 'email', 200), role, str(fd, 'title', 80)) : 'Bad role';
   if (err) redirect(`/portal/groups/${slug}?error=${encodeURIComponent(err)}#members`);
   back(slug);
 }
 
 export async function updateGroupMember(slug: string, userId: number, fd: FormData) {
-  const { group, perms } = await access(slug);
-  if (!perms.has('members')) redirect(`/portal/groups/${slug}?denied=1`);
+  const { user, group, perms } = await access(slug);
+  if (!perms.has('roles')) redirect(`/portal/groups/${slug}?denied=1`);
   const role = str(fd, 'role', 20);
   if (!Object.keys(GROUP_ROLES).includes(role)) redirect(`/portal/groups/${slug}`);
   const extra = GROUP_PERMS.map(([k]) => k).filter((k) => fd.get('perm_' + k) === 'on' && !GROUP_ROLES[role].includes(k));
@@ -144,16 +146,18 @@ export async function updateGroupMember(slug: string, userId: number, fd: FormDa
   if (cur?.role === 'manager' && role !== 'manager' && (await managerCount(group.id)) <= 1)
     redirect(`/portal/groups/${slug}?error=${encodeURIComponent('A group needs at least one manager.')}#members`);
   await saveMember(group.id, userId, role, str(fd, 'title', 80), extra);
+  if (cur && cur.role !== role) await logMember(group.id, userId, `role changed to ${role}`, user.id);
   back(slug);
 }
 
 export async function removeGroupMember(slug: string, userId: number) {
-  const { group, perms } = await access(slug);
+  const { user, group, perms } = await access(slug);
   if (!perms.has('members')) redirect(`/portal/groups/${slug}?denied=1`);
   const cur = await one<{ role: string }>('SELECT role FROM group_members WHERE group_id=$1 AND user_id=$2', [group.id, userId]);
+  if (cur && cur.role !== 'member' && !perms.has('roles')) redirect(`/portal/groups/${slug}?denied=1`);
   if (cur?.role === 'manager' && (await managerCount(group.id)) <= 1)
     redirect(`/portal/groups/${slug}?error=${encodeURIComponent('A group needs at least one manager.')}#members`);
-  await removeMember(group.id, userId);
+  await removeMember(group.id, userId, user.id);
   back(slug);
 }
 
@@ -229,32 +233,71 @@ export async function reviewPost(id: number, fd: FormData) {
   redirect('/portal/review?done=1');
 }
 
-// ---- Joining groups ----
-export async function requestJoin(slug: string) {
+// ---- Joining and leaving groups: both need approval from the group's manager, coach or leader ----
+const dest = (to: unknown, fallback: string) => (typeof to === 'string' && /^\/(portal|groups)(\/|$)/.test(to) ? to : fallback);
+
+export async function requestJoin(slug: string, to?: unknown) {
   const user = await requireUser();
   const g = await one<{ id: number; is_office: boolean }>("SELECT id, is_office FROM groups WHERE slug=$1 AND status='approved'", [slug]);
   if (!g || g.is_office) redirect(`/groups/${slug}`);
-  await query(
+  const r = await query(
     `INSERT INTO group_members(group_id,user_id,role,status) VALUES($1,$2,'member','pending')
-     ON CONFLICT (group_id,user_id) DO UPDATE SET status='pending', left_at=NULL WHERE group_members.status IN ('left','rejected')`, [g.id, user.id]);
-  redirect(`/groups/${slug}?requested=1`);
+     ON CONFLICT (group_id,user_id) DO UPDATE SET status='pending', left_at=NULL, role='member', title='', leave_requested=false WHERE group_members.status IN ('left','rejected') RETURNING 1`, [g.id, user.id]);
+  if (r.length) await logMember(g.id, user.id, 'requested to join', user.id);
+  redirect(dest(to, `/groups/${slug}?requested=1`));
 }
 
-export async function leaveGroup(slug: string) {
+export async function cancelJoin(slug: string, to?: unknown) {
   const user = await requireUser();
   const g = await one<{ id: number }>('SELECT id FROM groups WHERE slug=$1', [slug]);
-  if (g && (await managerCount(g.id)) > 0) {
-    const cur = await one<{ role: string }>("SELECT role FROM group_members WHERE group_id=$1 AND user_id=$2 AND status='active'", [g.id, user.id]);
-    if (cur?.role === 'manager' && (await managerCount(g.id)) <= 1) redirect('/portal?error=' + encodeURIComponent('Assign another manager before leaving.'));
+  if (g) {
+    const r = await query("DELETE FROM group_members WHERE group_id=$1 AND user_id=$2 AND status='pending' RETURNING 1", [g.id, user.id]);
+    if (r.length) await logMember(g.id, user.id, 'cancelled join request', user.id);
   }
-  if (g) await removeMember(g.id, user.id);
-  redirect('/portal');
+  redirect(dest(to, '/portal'));
+}
+
+export async function leaveGroup(slug: string, to?: unknown) {
+  const user = await requireUser();
+  const g = await one<{ id: number }>('SELECT id FROM groups WHERE slug=$1', [slug]);
+  const cur = g ? await one<{ role: string }>("SELECT role FROM group_members WHERE group_id=$1 AND user_id=$2 AND status='active'", [g.id, user.id]) : null;
+  if (!g || !cur) redirect(dest(to, '/portal'));
+  if (cur.role === 'manager' && (await managerCount(g.id)) <= 1) redirect('/portal?error=' + encodeURIComponent('Assign another manager before leaving.'));
+  // A plain member asks for permission; it is skipped only when nobody in the group can approve.
+  const approvers = Number((await one<{ n: string }>("SELECT count(*) n FROM group_members WHERE group_id=$1 AND user_id<>$2 AND status='active' AND role IN ('manager','coach','leader')", [g.id, user.id]))!.n);
+  if (cur.role === 'member' && approvers > 0) {
+    await query('UPDATE group_members SET leave_requested=true WHERE group_id=$1 AND user_id=$2', [g.id, user.id]);
+    await logMember(g.id, user.id, 'requested to leave', user.id);
+  } else await removeMember(g.id, user.id, user.id);
+  redirect(dest(to, '/portal'));
+}
+
+export async function cancelLeave(slug: string, to?: unknown) {
+  const user = await requireUser();
+  const g = await one<{ id: number }>('SELECT id FROM groups WHERE slug=$1', [slug]);
+  if (g) {
+    await query('UPDATE group_members SET leave_requested=false WHERE group_id=$1 AND user_id=$2', [g.id, user.id]);
+    await logMember(g.id, user.id, 'cancelled leave request', user.id);
+  }
+  redirect(dest(to, '/portal'));
 }
 
 export async function decideMember(slug: string, userId: number, approve: boolean) {
-  const { group, perms } = await access(slug);
+  const { user, group, perms } = await access(slug);
   if (!perms.has('members')) redirect(`/portal/groups/${slug}?denied=1`);
-  await query("UPDATE group_members SET status=$3, left_at=NULL WHERE group_id=$1 AND user_id=$2 AND status='pending'", [group.id, userId, approve ? 'active' : 'rejected']);
+  const r = await query("UPDATE group_members SET status=$3, left_at=NULL WHERE group_id=$1 AND user_id=$2 AND status='pending' RETURNING 1", [group.id, userId, approve ? 'active' : 'rejected']);
+  if (r.length) await logMember(group.id, userId, approve ? 'join approved' : 'join declined', user.id);
+  back(slug);
+}
+
+export async function decideLeave(slug: string, userId: number, approve: boolean) {
+  const { user, group, perms } = await access(slug);
+  if (!perms.has('members') || userId === user.id) redirect(`/portal/groups/${slug}?denied=1`);
+  const cur = await one<{ role: string }>("SELECT role FROM group_members WHERE group_id=$1 AND user_id=$2 AND status='active' AND leave_requested", [group.id, userId]);
+  if (cur) {
+    if (approve) await removeMember(group.id, userId, user.id, 'leave approved');
+    else { await query('UPDATE group_members SET leave_requested=false WHERE group_id=$1 AND user_id=$2', [group.id, userId]); await logMember(group.id, userId, 'leave declined', user.id); }
+  }
   back(slug);
 }
 
@@ -270,7 +313,7 @@ export async function requestGroup(officeSlug: string, fd: FormData) {
   const g = await one<{ id: number }>(
     `INSERT INTO groups(slug,name,type,summary,icon,dept,parent_id,status,requested_by,listed,info)
      VALUES($1,$2,$3,$4,$5,$6,$7,'pending',$8,true,$9) RETURNING id`,
-    [s, name, dept.childType, str(fd, 'summary', 300), office.icon, office.dept, office.id, user.id, str(fd, 'coach', 200) ? `Requested coach/adviser: ${str(fd, 'coach', 200)}` : '']);
+    [s, name, dept.kinds?.includes(str(fd, 'type', 40)) ? str(fd, 'type', 40) : dept.childType, str(fd, 'summary', 300), office.icon, office.dept, office.id, user.id, str(fd, 'coach', 200) ? `Requested coach/adviser: ${str(fd, 'coach', 200)}` : '']);
   await query("INSERT INTO group_members(group_id,user_id,role,status) VALUES($1,$2,'member','active') ON CONFLICT DO NOTHING", [g!.id, user.id]);
   redirect(`/portal/groups/${officeSlug}?requested=1#requests`);
 }
@@ -286,7 +329,7 @@ export async function decideGroup(officeSlug: string, groupId: number, fd: FormD
     await query("UPDATE groups SET status='approved', info='' WHERE id=$1", [g.id]);
     const coach = str(fd, 'coach', 200);
     if (coach) {
-      const err = await addMember(g.id, coach, 'manager', 'Coach / adviser');
+      const err = await addMember(g.id, coach, office.dept === 'athletics' ? 'coach' : 'manager', office.dept === 'athletics' ? 'Coach' : 'Coach / adviser');
       if (err) redirect(`/portal/groups/${officeSlug}?error=${encodeURIComponent(err)}#requests`);
     }
   }
@@ -330,6 +373,27 @@ export async function submitApplication(_: unknown, fd: FormData): Promise<Form>
   await query('INSERT INTO applications(kind,name,email,phone,grade,prev_school,message) VALUES($1,$2,$3,$4,$5,$6,$7)',
     [kind, v.name, v.email, v.phone, str(fd, 'grade', 20), str(fd, 'prev_school', 160), str(fd, 'message', 1500)]);
   return { ok: true, n: Date.now() };
+}
+
+// ---- Partnership requests (public form → Partnerships Office) ----
+export async function submitPartnerRequest(_: unknown, fd: FormData): Promise<Form> {
+  const ip = (await headers()).get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
+  if (!(await rateLimit('partner:' + ip, 5, 3600))) return { error: 'Too many submissions. Please try again later.' };
+  const v = { org: str(fd, 'org', 160), contact: str(fd, 'contact', 120), email: str(fd, 'email', 200), phone: str(fd, 'phone', 40) };
+  if (!v.org || !v.contact || !/^\S+@\S+\.\S+$/.test(v.email)) return { error: 'Enter the organization, a contact person and a valid email address.', v, n: Date.now() };
+  const type = PARTNER_TYPES.includes(str(fd, 'org_type', 40)) ? str(fd, 'org_type', 40) : 'Other';
+  const interests = fd.getAll('interests').map(String).filter((i) => PARTNER_INTERESTS.includes(i)).join(', ');
+  await query('INSERT INTO partner_requests(org,org_type,contact,position,email,phone,interests,message) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
+    [v.org, type, v.contact, str(fd, 'position', 120), v.email, v.phone, interests, str(fd, 'message', 2000)]);
+  return { ok: true, n: Date.now() };
+}
+
+export async function decidePartnerRequest(slug: string, id: number, fd: FormData) {
+  const { group, perms } = await access(slug);
+  if (group.dept !== 'partnership' || !perms.has('members')) redirect(`/portal/groups/${slug}?denied=1`);
+  const status = ['approved', 'rejected', 'pending'].includes(str(fd, 'status', 12)) ? str(fd, 'status', 12) : 'pending';
+  await query('UPDATE partner_requests SET status=$2, note=$3 WHERE id=$1', [id, status, str(fd, 'note', 300)]);
+  back(slug);
 }
 
 // ---- Alumni office: approve alumni who want to join ----

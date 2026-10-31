@@ -30,6 +30,8 @@ export default function Footer({ s, groups }: { s: Settings; groups: NavGroup[] 
             <Link href="/portal/login?as=student"><i className="fa-solid fa-user-graduate" /> Student login</Link>
             <Link href="/portal/login?as=alumni"><i className="fa-solid fa-people-roof" /> Alumni login</Link>
             <Link href="/portal/login?as=research"><i className="fa-solid fa-microscope" /> Research center login</Link>
+            <Link href="/portal/login?as=athletics"><i className="fa-solid fa-medal" /> Athletics login</Link>
+            <Link href="/portal/login?as=partner"><i className="fa-solid fa-handshake" /> Partner login</Link>
             <Link href="/admin"><i className="fa-solid fa-lock" /> Staff / admin login</Link>
           </div>
           <div>

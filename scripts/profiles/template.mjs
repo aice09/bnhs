@@ -71,6 +71,13 @@ export const PAGES = {
 };
 
 export const ITEMS = {
+  partnerships: [
+    ['College scholarships', 'Partner benefit', 'Fund or sponsor college scholarships for deserving graduates.', 'graduation-cap', 'benefits'],
+    ['Educational assistance', 'Partner benefit', 'Support learners with supplies, uniforms, allowances and learning materials.', 'hand-holding-heart', 'benefits'],
+    ['Training and workshops', 'Partner benefit', 'Run skills training, career talks and workshops.', 'chalkboard-user', 'benefits'],
+    ['School visits and immersion', 'Partner benefit', 'Host learners for visits and work immersion, or visit the campus.', 'bus', 'benefits'],
+    ['Certifications', 'Partner benefit', 'Offer assessments and certifications so learners graduate with recognized skills.', 'certificate', 'benefits'],
+  ],
   facts: [
     ['Year established', SETTINGS.established, `${NAME} opened its doors.`, 'calendar', 'key-facts'],
   ],

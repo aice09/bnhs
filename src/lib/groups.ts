@@ -17,12 +17,12 @@ export async function membershipBySlug(userId: number, slug: string): Promise<Me
   return (await membershipsOf(userId)).find((m) => m.slug === slug) ?? null;
 }
 
-export type Member = { user_id: number; name: string; email: string; role: string; title: string; permissions: string[]; account_role: string };
+export type Member = { user_id: number; name: string; email: string; role: string; title: string; permissions: string[]; account_role: string; leave_requested: boolean };
 export const membersOf = (groupId: number) =>
   query<Member>(
-    `SELECT m.user_id, u.name, u.email, m.role, m.title, m.permissions, u.role AS account_role
+    `SELECT m.user_id, u.name, u.email, m.role, m.title, m.permissions, u.role AS account_role, m.leave_requested
      FROM group_members m JOIN users u ON u.id = m.user_id WHERE m.group_id = $1 AND m.status = 'active'
-     ORDER BY (m.role='manager') DESC, (m.role='editor') DESC, u.name`, [groupId]);
+     ORDER BY (m.role='manager') DESC, (m.role='coach') DESC, (m.role='leader') DESC, (m.role='editor') DESC, u.name`, [groupId]);
 
 export async function addMember(groupId: number, email: string, role: string, title = ''): Promise<string | null> {
   const u = await one<{ id: number; status: string }>('SELECT id, status FROM users WHERE lower(email)=lower($1)', [email.trim()]);
@@ -30,7 +30,8 @@ export async function addMember(groupId: number, email: string, role: string, ti
   if (u.status !== 'active') return 'That account is not active yet.';
   await query(
     `INSERT INTO group_members(group_id, user_id, role, title) VALUES ($1,$2,$3,$4)
-     ON CONFLICT (group_id, user_id) DO UPDATE SET role = EXCLUDED.role, title = EXCLUDED.title, status = 'active', left_at = NULL`, [groupId, u.id, role, title]);
+     ON CONFLICT (group_id, user_id) DO UPDATE SET role = EXCLUDED.role, title = EXCLUDED.title, status = 'active', left_at = NULL, leave_requested = false`, [groupId, u.id, role, title]);
+  await logMember(groupId, u.id, `added as ${role}`);
   return null;
 }
 
@@ -38,8 +39,37 @@ export const saveMember = (groupId: number, userId: number, role: string, title:
   query('UPDATE group_members SET role=$3, title=$4, permissions=$5 WHERE group_id=$1 AND user_id=$2', [groupId, userId, role, title, permissions]);
 
 // Members who leave are kept (status 'left') so their group history stays on their profile.
-export const removeMember = (groupId: number, userId: number) =>
-  query("UPDATE group_members SET status='left', left_at=now() WHERE group_id=$1 AND user_id=$2", [groupId, userId]);
+export async function removeMember(groupId: number, userId: number, actorId?: number, action?: string) {
+  await query("UPDATE group_members SET status='left', left_at=now(), leave_requested=false WHERE group_id=$1 AND user_id=$2", [groupId, userId]);
+  await logMember(groupId, userId, action ?? (actorId && actorId !== userId ? 'removed' : 'left'), actorId);
+}
+
+// Every join, leave and role change is recorded so a person's full group history is kept.
+export const logMember = (groupId: number, userId: number, action: string, actorId?: number) =>
+  query('INSERT INTO group_member_log(group_id,user_id,action,actor_id) VALUES($1,$2,$3,$4)', [groupId, userId, action, actorId ?? null]);
+
+export const MEMBER_CATEGORIES = [
+  { key: 'student-groups', title: 'Student Groups', icon: 'people-group', depts: ['student-groups', 'sgo', 'publication'], blurb: 'Projects, activities, SGO, subject clubs and the publication team. Each has a manager and a leader.' },
+  { key: 'research', title: 'Research & Innovation Centers', icon: 'flask', depts: ['research'], blurb: 'Research and innovation centers, each with a manager and a leader.' },
+  { key: 'athletics', title: 'Athletics', icon: 'medal', depts: ['athletics'], blurb: 'Choose a sport. Each sport has a manager, a coach and a team leader.' },
+];
+
+export type BrowseGroup = { id: number; slug: string; name: string; type: string; icon: string; summary: string; dept: string; people: string; my_status: string | null; my_leave: boolean; my_role: string | null };
+
+export const browseGroups = (userId: number) =>
+  query<BrowseGroup>(
+    `SELECT g.id, g.slug, g.name, g.type, g.icon, g.summary, g.dept,
+       (SELECT string_agg(m2.role || ': ' || u.name, ' · ' ORDER BY (m2.role='manager') DESC, (m2.role='coach') DESC, u.name)
+          FROM group_members m2 JOIN users u ON u.id=m2.user_id WHERE m2.group_id=g.id AND m2.status='active' AND m2.role IN ('manager','coach','leader')) AS people,
+       m.status AS my_status, COALESCE(m.leave_requested,false) AS my_leave, m.role AS my_role
+     FROM groups g LEFT JOIN group_members m ON m.group_id=g.id AND m.user_id=$1
+     WHERE g.status='approved' AND g.listed AND NOT g.is_office AND g.dept = ANY($2)
+     ORDER BY g.type, g.sort, g.name`, [userId, MEMBER_CATEGORIES.flatMap((c) => c.depts)]);
+
+export const memberLog = (userId: number, n = 30) =>
+  query<{ action: string; created_at: string; name: string }>(
+    `SELECT l.action, to_char(l.created_at,'YYYY-MM-DD HH24:MI') AS created_at, g.name FROM group_member_log l JOIN groups g ON g.id=l.group_id
+     WHERE l.user_id=$1 ORDER BY l.created_at DESC, l.id DESC LIMIT ${Number(n)}`, [userId]);
 
 export async function managerCount(groupId: number) {
   return Number((await one<{ n: string }>("SELECT count(*) n FROM group_members WHERE group_id=$1 AND role='manager' AND status='active'", [groupId]))!.n);
