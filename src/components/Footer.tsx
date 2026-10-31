@@ -39,6 +39,7 @@ export default function Footer({ s, groups }: { s: Settings; groups: NavGroup[] 
             {s.facebook_url && <a href={s.facebook_url} target="_blank" rel="noopener noreferrer"><i className="fa-brands fa-facebook" /> Facebook page</a>}
             <a href="https://www.deped.gov.ph" target="_blank" rel="noopener noreferrer"><i className="fa-solid fa-landmark" /> DepEd</a>
             <Link href="/news">News &amp; Announcements</Link>
+            <Link href="/digital-services"><i className="fa-solid fa-diagram-project" /> Digital services</Link>
             <Link href="/contact"><i className="fa-solid fa-paper-plane" /> Send a message</Link>
           </div>
         </div>

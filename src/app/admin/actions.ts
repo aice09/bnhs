@@ -12,6 +12,7 @@ import { normTags, slugify } from '@/lib/content';
 import { one, query } from '@/lib/db';
 import { normSdg } from '@/lib/sdg';
 import { RESOURCES, SETTING_FIELDS, type Field } from '@/lib/resources';
+import { audit } from '@/lib/platform';
 
 export async function login(_: unknown, fd: FormData): Promise<{ error: string; email?: string; n?: number } | undefined> {
   const ip = (await headers()).get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
@@ -25,6 +26,7 @@ export async function login(_: unknown, fd: FormData): Promise<{ error: string; 
   if (user.status !== 'active') return { error: 'This account is disabled.', email, n: Date.now() };
   await createSession(user);
   await query('UPDATE users SET last_login=now() WHERE id=$1', [user.id]);
+  await audit(user, 'login', 'users', user.email);
   const to = String(fd.get('next') || '');
   redirect(isStaff(user) ? '/admin' : to.startsWith('/portal') ? to : '/portal');
 }
@@ -50,7 +52,7 @@ function value(f: Field, fd: FormData): unknown {
 export async function saveResource(resource: string, id: string, fd: FormData) {
   const r = RESOURCES[resource];
   if (!r) throw new Error('Unknown resource');
-  await requireAdmin(r.perm);
+  const actor = await requireAdmin(r.perm);
   const fields = r.fields.filter((f) => f.type !== 'heading');
   const cols = fields.map((f) => f.name);
   const vals = fields.map((f) => value(f, fd));
@@ -77,19 +79,21 @@ export async function saveResource(resource: string, id: string, fd: FormData) {
     await query(`UPDATE ${r.table} SET ${set.join(',')} WHERE id=$${cols.length + 1}${r.section ? ` AND section=$${cols.length + 2}` : ''}`,
       [...vals, Number(id), ...(r.section ? [r.section] : [])]);
   }
+  await audit(actor, isNew ? 'create' : 'update', resource, `${isNew ? 'new' : '#' + id}${cols.includes('title') ? ': ' + String(vals[cols.indexOf('title')]).slice(0, 80) : ''}`);
   await invalidateCache();
   redirect(`/admin/${resource}?saved=1`);
 }
 
 export async function togglePage(slug: string, returnTo: string) {
-  await requireAdmin('sections');
+  const actor = await requireAdmin('sections');
+  await audit(actor, 'toggle page', 'pages', slug);
   await query('UPDATE pages SET enabled = NOT enabled, updated_at = now() WHERE slug=$1', [slug]);
   await invalidateCache();
   redirect(returnTo);
 }
 
 export async function saveSettings(fd: FormData) {
-  await requireAdmin('settings');
+  await audit(await requireAdmin('settings'), 'update', 'settings', 'site settings');
   for (const f of SETTING_FIELDS.filter((x) => x.type !== 'heading'))
     await query(
       'INSERT INTO settings(key,value) VALUES($1,$2) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value',
@@ -154,6 +158,7 @@ export async function saveUser(id: string, fd: FormData) {
     await query('UPDATE users SET email=$1,name=$2,role=$3,status=$4,permissions=$5,note=$6 WHERE id=$7', [email, name, safeRole, safeStatus, perms, note, uid]);
     if (pw) await query('UPDATE users SET password_hash=$1 WHERE id=$2', [await bcrypt.hash(pw, 12), uid]);
   }
+  await audit(me, id === 'new' ? 'create' : 'update', 'users', `${email} (${role}, ${status})`);
   await invalidateCache();
   redirect('/admin/users?saved=1');
 }
@@ -161,6 +166,7 @@ export async function saveUser(id: string, fd: FormData) {
 export async function deleteUser(id: number) {
   const me = await requireAdmin('users');
   if (id === me.id) redirect('/admin/users?error=You cannot delete your own account');
+  await audit(me, 'delete', 'users', '#' + id);
   await query('DELETE FROM users WHERE id=$1', [id]);
   await invalidateCache();
   redirect('/admin/users?saved=1');
@@ -176,7 +182,7 @@ export async function setUserStatus(id: number, status: string) {
 
 // ---- Backups ----
 export async function makeBackup(fd: FormData) {
-  await requireAdmin('backups');
+  await audit(await requireAdmin('backups'), 'backup', 'database', '');
   try {
     await createBackup({ uploads: fd.get('uploads') === 'on' });
   } catch (e) {
@@ -213,4 +219,27 @@ export async function completeSetup(fd: FormData) {
   await put('setup_done', '1');
   await invalidateCache();
   redirect('/admin?welcome=1');
+}
+
+// ---- Digital platform registry ----
+const urlOf = (v: FormDataEntryValue | null) => { const x = String(v ?? '').trim().slice(0, 300); return x === '' || /^(\/(?!\/)|https?:\/\/)/.test(x) ? x : ''; };
+
+export async function saveModule(key: string, fd: FormData) {
+  const me = await requireAdmin('platform');
+  const status = String(fd.get('status'));
+  if (!['live', 'partial', 'planned'].includes(status)) throw new Error('Bad status');
+  await query(
+    'UPDATE platform_modules SET status=$2, enabled=$3, public_url=$4, admin_url=$5, portal_url=$6, notes=$7, updated_at=now() WHERE key=$1',
+    [key, status, fd.get('enabled') === 'on', urlOf(fd.get('public_url')), urlOf(fd.get('admin_url')), urlOf(fd.get('portal_url')), String(fd.get('notes') ?? '').trim().slice(0, 500)]);
+  await audit(me, 'update', 'platform', `${key}: ${status}${fd.get('enabled') === 'on' ? ', enabled' : ', hidden'}`);
+  await invalidateCache();
+  redirect(`/admin/platform?saved=1#${key}`);
+}
+
+export async function toggleModule(key: string) {
+  const me = await requireAdmin('platform');
+  await query('UPDATE platform_modules SET enabled = NOT enabled, updated_at = now() WHERE key=$1', [key]);
+  await audit(me, 'toggle', 'platform', key);
+  await invalidateCache();
+  redirect(`/admin/platform?saved=1#${key}`);
 }

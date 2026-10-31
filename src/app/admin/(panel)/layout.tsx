@@ -11,6 +11,7 @@ export const metadata = { title: 'Admin', robots: { index: false, follow: false 
 export const dynamic = 'force-dynamic';
 
 const TOOLS: [string, string, string, string][] = [
+  ['platform', 'Digital Platform', 'diagram-project', '/admin/platform'],
   ['users', 'Users & Alumni', 'user-shield', '/admin/users'],
   ['appearance', 'Appearance', 'palette', '/admin/appearance'],
   ['settings', 'Site Settings', 'gear', '/admin/settings'],

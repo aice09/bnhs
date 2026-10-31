@@ -12,6 +12,7 @@ export const ADMIN_PERMS: [string, string][] = [
   ['appearance', 'Appearance (logo & colors)'],
   ['settings', 'Site settings'],
   ['backups', 'Backups & storage'],
+  ['platform', 'Digital platform (modules, audit log)'],
 ];
 
 export const GROUP_PERMS: [string, string][] = [

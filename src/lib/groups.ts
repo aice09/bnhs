@@ -45,8 +45,14 @@ export async function removeMember(groupId: number, userId: number, actorId?: nu
 }
 
 // Every join, leave and role change is recorded so a person's full group history is kept.
-export const logMember = (groupId: number, userId: number, action: string, actorId?: number) =>
-  query('INSERT INTO group_member_log(group_id,user_id,action,actor_id) VALUES($1,$2,$3,$4)', [groupId, userId, action, actorId ?? null]);
+export async function logMember(groupId: number, userId: number, action: string, actorId?: number) {
+  await query('INSERT INTO group_member_log(group_id,user_id,action,actor_id) VALUES($1,$2,$3,$4)', [groupId, userId, action, actorId ?? null]);
+  // The same event is also written to the platform-wide audit log.
+  await query(
+    `INSERT INTO audit_log(actor_id, actor, action, entity, detail)
+     SELECT a.id, COALESCE(a.name, ''), 'membership: ' || $3::text, g.name, u.name FROM groups g, users u LEFT JOIN users a ON a.id = $4 WHERE g.id = $1 AND u.id = $2`,
+    [groupId, userId, action, actorId ?? null]).catch(() => {});
+}
 
 export const MEMBER_CATEGORIES = [
   { key: 'student-groups', title: 'Student Groups', icon: 'people-group', depts: ['student-groups', 'sgo', 'publication'], blurb: 'Projects, activities, SGO, subject clubs and the publication team. Each has a manager and a leader.' },

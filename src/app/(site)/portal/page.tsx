@@ -5,6 +5,7 @@ import { query } from '@/lib/db';
 import { MEMBER_CATEGORIES, memberLog, membershipsOf, reviewQueue } from '@/lib/groups';
 import Avatar from '@/components/Avatar';
 import { hasPerm, isStaff } from '@/lib/perms';
+import { listModules } from '@/lib/platform';
 import GroupButtons from './GroupButtons';
 
 export const metadata = { title: 'My portal', robots: { index: false, follow: false } };
@@ -24,6 +25,12 @@ export default async function Portal() {
     memberLog(user.id, 15),
     query<{ group_id: number; leave_requested: boolean; dept: string; type: string }>("SELECT m.group_id, m.leave_requested, g.dept, g.type FROM group_members m JOIN groups g ON g.id=m.group_id WHERE m.user_id=$1 AND m.status='active'", [user.id]),
   ]);
+  const mods = (await listModules()).filter((m) => m.enabled && m.status !== 'planned' && m.suite !== 'shared' && m.portal_url);
+  const mySlugs = new Set(mine.map((m) => m.slug));
+  const apps = mods.filter((m) => {
+    const g = m.portal_url.match(/^\/portal\/groups\/([^/?#]+)/)?.[1];
+    return g ? mySlugs.has(g) || hasPerm(user, 'groups') : true;
+  });
   const leaving = new Set(myRows.filter((r) => r.leave_requested).map((r) => r.group_id));
   const deptOf = new Map(myRows.map((r) => [r.group_id, r.dept]));
   const sections = [
@@ -67,6 +74,11 @@ export default async function Portal() {
             </div>
           </div>))}
       </div>
+
+      {apps.length > 0 && (
+        <div className="panel"><h2 style={{ marginTop: 0 }}>My school services</h2>
+          <div className="chips">{apps.map((m) => <Link key={m.key} className="chip" href={m.portal_url}>{m.name}</Link>)}
+            <Link className="chip" href="/digital-services">All digital services</Link></div></div>)}
 
       {log.length > 0 && (
         <div className="panel"><h2 style={{ marginTop: 0 }}>My join &amp; leave history</h2>

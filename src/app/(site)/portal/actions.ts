@@ -12,6 +12,7 @@ import { one, query } from '@/lib/db';
 import { accessFor, addMember, logMember, managerCount, removeMember, reviewQueue, routePost, saveMember } from '@/lib/groups';
 import { DEPTS, GROUP_PERMS, GROUP_ROLES, hasPerm } from '@/lib/perms';
 import { groupBlocks } from '@/lib/sections';
+import { audit } from '@/lib/platform';
 
 type Form = { error?: string; ok?: boolean; n?: number; v?: Record<string, string> };
 const str = (fd: FormData, k: string, max = 2000) => String(fd.get(k) ?? '').trim().slice(0, max);
@@ -229,6 +230,7 @@ export async function reviewPost(id: number, fd: FormData) {
   } else {
     await query("UPDATE posts SET status='published', published=true, stage='', published_at=now(), review_note='' WHERE id=$1", [id]);
   }
+  await audit(user, fd.get('decision') === 'reject' ? 'news rejected' : 'news approved', 'posts', `#${id} ${post.title.slice(0, 80)} (stage: ${post.stage || 'admin'})`);
   await invalidateCache();
   redirect('/portal/review?done=1');
 }
@@ -339,10 +341,11 @@ export async function decideGroup(officeSlug: string, groupId: number, fd: FormD
 
 // ---- Applications (Admission Office) ----
 export async function decideApplication(slug: string, id: number, fd: FormData) {
-  const { perms } = await access(slug);
+  const { user, perms } = await access(slug);
   if (!perms.has('members')) redirect(`/portal/groups/${slug}?denied=1`);
   const status = ['approved', 'rejected', 'pending'].includes(str(fd, 'status', 12)) ? str(fd, 'status', 12) : 'pending';
   await query('UPDATE applications SET status=$2, note=$3 WHERE id=$1', [id, status, str(fd, 'note', 300)]);
+  await audit(user, 'application ' + status, 'applications', '#' + id);
   back(slug);
 }
 
@@ -389,10 +392,11 @@ export async function submitPartnerRequest(_: unknown, fd: FormData): Promise<Fo
 }
 
 export async function decidePartnerRequest(slug: string, id: number, fd: FormData) {
-  const { group, perms } = await access(slug);
+  const { user, group, perms } = await access(slug);
   if (group.dept !== 'partnership' || !perms.has('members')) redirect(`/portal/groups/${slug}?denied=1`);
   const status = ['approved', 'rejected', 'pending'].includes(str(fd, 'status', 12)) ? str(fd, 'status', 12) : 'pending';
   await query('UPDATE partner_requests SET status=$2, note=$3 WHERE id=$1', [id, status, str(fd, 'note', 300)]);
+  await audit(user, 'partner request ' + status, 'partner_requests', '#' + id);
   back(slug);
 }
 

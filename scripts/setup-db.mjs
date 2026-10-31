@@ -1,6 +1,7 @@
 import pg from 'pg';
 import bcrypt from 'bcryptjs';
 import fs from 'node:fs';
+import { MODULES, SUITES } from '../src/lib/platform-registry.mjs';
 
 for (const f of ['.env.local', '.env']) {
   if (!fs.existsSync(f)) continue;
@@ -150,6 +151,19 @@ await q(`CREATE TABLE IF NOT EXISTS partner_requests (
   id serial PRIMARY KEY, org text NOT NULL, org_type text NOT NULL DEFAULT '', contact text NOT NULL, position text NOT NULL DEFAULT '',
   email text NOT NULL, phone text NOT NULL DEFAULT '', interests text NOT NULL DEFAULT '', message text NOT NULL DEFAULT '',
   status text NOT NULL DEFAULT 'pending', note text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now())`);
+await q(`CREATE TABLE IF NOT EXISTS platform_modules (
+  key text PRIMARY KEY, no int NOT NULL, suite text NOT NULL, name text NOT NULL, summary text NOT NULL DEFAULT '', phase int NOT NULL DEFAULT 1,
+  status text NOT NULL DEFAULT 'planned', enabled boolean NOT NULL DEFAULT false, public_url text NOT NULL DEFAULT '', admin_url text NOT NULL DEFAULT '',
+  portal_url text NOT NULL DEFAULT '', notes text NOT NULL DEFAULT '', updated_at timestamptz NOT NULL DEFAULT now())`);
+await q(`CREATE TABLE IF NOT EXISTS audit_log (
+  id bigserial PRIMARY KEY, actor_id int REFERENCES users(id) ON DELETE SET NULL, actor text NOT NULL DEFAULT '', action text NOT NULL,
+  entity text NOT NULL DEFAULT '', detail text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now())`);
+await q('CREATE INDEX IF NOT EXISTS audit_log_created ON audit_log(created_at DESC)');
+// Registry rows are inserted once; the administrator's edits (status, links, enabled) are never overwritten.
+for (const [suite] of SUITES)
+  for (const [no, key, name, summary, phase, status, pub, adm, portal] of MODULES[suite] ?? [])
+    await q(`INSERT INTO platform_modules(key,no,suite,name,summary,phase,status,enabled,public_url,admin_url,portal_url) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (key) DO NOTHING`,
+      [key, no, suite, name, summary, phase, status, status !== 'planned', pub, adm, portal]);
 const OFFICES = [
   ['research-office', 'Research & Innovation Office', 'research', 'flask', ['Research Center'], false],
   ['athletics-office', 'Athletics Office', 'athletics', 'medal', ['Sports Team'], false],

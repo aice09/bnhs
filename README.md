@@ -55,3 +55,11 @@ Image/file uploads are stored in `UPLOAD_DIR` and served from `/uploads/*`.
 
 - `public/seed/ph-hs-2.jpg` (home hero): "Philippine students" by Roberto Verzo, CC BY 2.0, via Wikimedia Commons. Replace it in Admin → Settings → Home hero photo.
 - `public/seed/ph-hs-1.jpg`: US Peace Corps, public domain, via Wikimedia Commons.
+
+## Digital platform hub
+
+The CMS is the hub of one connected school platform (identity, groups, approval workflow, audit log shared by all modules).
+- `/admin/platform` – module registry (42 modules: core systems, extensions, shared services). Set status (live / in progress / planned), enable or hide, edit links.
+- `/admin/platform/audit` – searchable audit log (logins, content edits, approvals, membership changes).
+- `/digital-services` – public list of enabled services; the portal shows "My school services".
+- Registry source: `src/lib/platform-registry.mjs`. Planned modules (SIS, grading, attendance, DCMS, elections…) are registered but not built.

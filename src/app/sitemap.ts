@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = (process.env.SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
   const fixed: [string, number][] = [
-    ['', 1], ['/academics', 0.9], ['/admissions', 0.9], ['/news', 0.8], ['/faculty', 0.6], ['/downloads', 0.5], ['/contact', 0.7],
+    ['', 1], ['/academics', 0.9], ['/admissions', 0.9], ['/news', 0.8], ['/faculty', 0.6], ['/downloads', 0.5], ['/contact', 0.7], ['/digital-services', 0.5],
   ];
   const pages = await enabledPages().catch(() => []);
   for (const g of buildNav(pages))
