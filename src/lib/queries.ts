@@ -4,7 +4,7 @@ import { query, one } from './db';
 export type Post = {
   id: number; slug: string; title: string; category: string; excerpt: string; content: string;
   image: string; placement: string; published_at: string; views: number;
-  tags: string; group_id: number | null; group_name: string | null; group_slug: string | null; group_type: string | null;
+  tags: string; sdg: string; group_id: number | null; group_name: string | null; group_slug: string | null; group_type: string | null;
 };
 export type Settings = Record<string, string>;
 
@@ -28,11 +28,11 @@ export const enabledPages = () =>
 
 export type Item = {
   id: number; title: string; meta: string; description: string; image: string; url: string; icon: string;
-  block: string; category: string; extra: string; section?: string; event_date: string | null; featured: boolean; tags: string;
+  block: string; category: string; extra: string; section?: string; event_date: string | null; featured: boolean; tags: string; sdg: string;
   group_id: number | null; group_name: string | null; group_slug: string | null; group_type: string | null;
 };
 const ITEM_SQL = `SELECT i.id, i.section, i.title, i.meta, i.description, i.image, i.url, i.icon, i.block, i.category, i.extra,
-  to_char(i.event_date,'YYYY-MM-DD') AS event_date, i.featured, i.tags, i.group_id, g.name AS group_name, g.slug AS group_slug, g.type AS group_type
+  to_char(i.event_date,'YYYY-MM-DD') AS event_date, i.featured, i.tags, i.sdg, i.group_id, g.name AS group_name, g.slug AS group_slug, g.type AS group_type
   FROM items i LEFT JOIN groups g ON g.id = i.group_id WHERE i.enabled AND (i.group_id IS NULL OR ((g.listed OR g.is_office) AND g.status = 'approved'))`;
 
 export const listItems = (section: string) =>
@@ -48,7 +48,7 @@ export const groupItemsBySection = (groupId: number) =>
   cached('c:gitems2:' + groupId, TTL, () => query<Item>(
     `${ITEM_SQL} AND i.group_id=$1 ORDER BY i.sort, i.event_date DESC NULLS LAST, i.id DESC`, [groupId]));
 
-const POST_COLS = `p.id, p.slug, p.title, p.category, p.excerpt, p.content, p.image, p.placement, p.published_at, p.views, p.tags,
+const POST_COLS = `p.id, p.slug, p.title, p.category, p.excerpt, p.content, p.image, p.placement, p.published_at, p.views, p.tags, p.sdg,
   p.group_id, g.name AS group_name, g.slug AS group_slug, g.type AS group_type`;
 const FROM = 'posts p LEFT JOIN groups g ON g.id = p.group_id';
 const LIVE = "p.published = true AND p.status = 'published' AND p.published_at <= now()";
@@ -81,6 +81,13 @@ export const postsAbout = (tags: string[], groupTypes: string[] = [], n = 3) =>
     query<Post>(`SELECT ${POST_COLS} FROM ${FROM} WHERE ${LIVE}
       AND (string_to_array(p.tags, ',') && $1::text[] OR g.type = ANY($2::text[]))
       ORDER BY p.published_at DESC LIMIT ${n}`, [tags, groupTypes]));
+
+// Articles tagged with an SDG (optionally one goal), plus anything tagged #sdg.
+export const postsSdg = (goal: number | null, n = 9) =>
+  cached(`c:sdgposts:${goal ?? 'all'}:${n}`, 120, () =>
+    query<Post>(`SELECT ${POST_COLS} FROM ${FROM} WHERE ${LIVE}
+      AND (${goal ? "$1 = ANY(string_to_array(p.sdg, ',')::int[])" : "(p.sdg <> '' OR string_to_array(p.tags, ',') && ARRAY['sdg','sustainability'])"})
+      ORDER BY p.published_at DESC LIMIT ${n}`, goal ? [goal] : []));
 
 export const getPost = (slug: string) =>
   cached('c:post:' + slug, 120, () => one<Post>(`SELECT ${POST_COLS} FROM ${FROM} WHERE p.slug=$1 AND ${LIVE}`, [slug]));

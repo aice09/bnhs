@@ -1,9 +1,10 @@
 import ImageField from '@/components/ImageField';
+import SdgPicker from '@/components/SdgPicker';
 import type { Block } from '@/lib/sections';
 
 export type Entry = {
   id?: number; section?: string; block?: string; title?: string; meta?: string; category?: string; extra?: string; description?: string;
-  image?: string; url?: string; event_date?: string | null; tags?: string; featured?: boolean; credit?: string;
+  image?: string; url?: string; event_date?: string | null; tags?: string; sdg?: string; featured?: boolean; credit?: string;
 };
 
 export default function EntryForm({ action, targets, e = {}, canFeature, label }: {
@@ -25,6 +26,7 @@ export default function EntryForm({ action, targets, e = {}, canFeature, label }
       <div className="row">
         <div className="fld" style={{ flex: 1, minWidth: 160 }}><label>Date</label><input type="date" name="event_date" defaultValue={e.event_date ?? ''} /></div>
         <div className="fld" style={{ flex: 2, minWidth: 200 }}><label>Tags (comma separated)</label><input name="tags" defaultValue={e.tags} /></div>
+        <div className="fld" style={{ flexBasis: '100%' }}><label>Related SDGs (optional)</label><SdgPicker initial={e.sdg ?? ''} /></div>
       </div>
       <div className="fld"><label>Description</label><textarea name="description" rows={3} defaultValue={e.description} /></div>
       <div className="fld"><label>Image</label><ImageField name="image" initial={e.image ?? ''} /></div>

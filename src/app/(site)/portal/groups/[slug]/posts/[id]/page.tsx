@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import ImageField from '@/components/ImageField';
+import SdgPicker from '@/components/SdgPicker';
 import { requireUser } from '@/lib/auth';
 import { one } from '@/lib/db';
 import { accessFor } from '@/lib/groups';
@@ -33,6 +34,7 @@ export default async function PostEditor({ params, searchParams }: { params: Pro
         <div className="fld"><label>Title</label><input name="title" defaultValue={p.title} required maxLength={200} /></div>
         <div className="fld"><label>Category</label><select name="category" defaultValue={p.category}>{CATS.map((c) => <option key={c}>{c}</option>)}</select></div>
         <div className="fld"><label>Tags (comma separated)</label><input name="tags" defaultValue={p.tags} placeholder="research, grade-12" /></div>
+        <div className="fld"><label>Related SDGs (optional)</label><SdgPicker initial={p.sdg ?? ''} /><div className="help">Tagged stories also go to the SDG manager for approval, then to the publication manager.</div></div>
         <div className="fld"><label>Short summary</label><textarea name="excerpt" rows={2} defaultValue={p.excerpt} maxLength={300} /></div>
         <div className="fld"><label>Story (Markdown)</label><textarea name="content" rows={14} defaultValue={p.content} required style={{ fontFamily: 'monospace' }} /></div>
         <div className="fld"><label>Cover image</label><ImageField name="image" initial={p.image ?? ''} /></div>

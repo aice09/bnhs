@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import DateBadge from '@/components/DateBadge';
+import SdgGrid from '@/components/SdgGrid';
+import VideoButton from '@/components/VideoButton';
 import HeroCarousel, { type Slide } from '@/components/HeroCarousel';
 import Logo from '@/components/Logo';
 import PostCard from '@/components/PostCard';
@@ -9,15 +11,17 @@ import { featuredPost, getPage, getSettings, highlightPosts, latestPosts, listPr
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const [s, posts, programs, history, main, upcoming] = await Promise.all([
-    getSettings(), latestPosts(6), listPrograms(), getPage('history'), featuredPost(), upcomingItems(4),
+  const [s, posts, programs, history, main, upcoming, sdgPage] = await Promise.all([
+    getSettings(), latestPosts(6), listPrograms(), getPage('history'), featuredPost(), upcomingItems(4), getPage('sdg'),
   ]);
+  const sdgOn = !!sdgPage;
   const highlights = await highlightPosts(main?.id ?? null, 3);
   const slides: Slide[] = [
-    { key: 'school', kicker: s.home_eyebrow, title: s.hero_title, text: s.hero_subtitle, image: '', href: '/admissions', cta: 'Enroll now' },
+    { key: 'school', kicker: s.home_eyebrow, title: s.hero_title, text: s.hero_subtitle, image: s.hero_image || '', href: '/admissions', cta: 'Enroll now' },
     ...[main, ...highlights].filter((p): p is NonNullable<typeof main> => !!p && !!p.image).slice(0, 4).map((p) => (
       { key: 'p' + p.id, kicker: p.placement === 'Main' ? 'Top story' : p.category, title: p.title, text: p.excerpt, image: p.image, href: `/news/${p.slug}`, cta: 'Read story' })),
   ];
+  const video = s.hero_video_on !== 'no' ? { label: s.hero_video_label || 'Watch our story', url: s.hero_video_url || '/about', mode: s.hero_video_mode || 'modal' } : null;
   const audience: [string, string, string, string][] = [
     ['user-plus', 'Future students', '/admissions', 'Admissions'], ['user-graduate', 'Current students', '/portal/login', 'Portal'],
     ['chalkboard-user', 'Faculty & staff', '/faculty', 'Our teachers'], ['users', 'Alumni', '/alumni', 'Reconnect'],
@@ -26,7 +30,7 @@ export default async function Home() {
   ];
   const intro = (history?.content || '').split('\n').find((l) => l.length > 80 && !l.startsWith('#')) || '';
   return (
-    <>
+    <div id="home">
       {s.home_hero === 'static' ? (
         <section className="hero">
           <div className="wrap hero-in">
@@ -36,16 +40,17 @@ export default async function Home() {
               <p>{s.hero_subtitle}</p>
               <div className="btns">
                 <Link className="btn gold" href="/admissions"><i className="fa-solid fa-user-plus" /> Enroll now</Link>
+                {video && <VideoButton {...video} />}
                 <Link className="btn ghost" href="/academics"><i className="fa-solid fa-graduation-cap" /> Our programs</Link>
               </div>
             </div>
             <div className="hero-logo"><Logo src={s.logo_url} name={s.school_name} size={300} /></div>
           </div>
         </section>
-      ) : <HeroCarousel slides={slides} />}
+      ) : <HeroCarousel slides={slides} video={video} quote={s.hero_quote} />}
 
       <div className="wrap">
-        <nav className="aud" aria-label="Quick access">
+        <nav id="after-hero" className="aud" aria-label="Quick access">
           {audience.map(([icon, t, href, sub]) => <Link key={t} href={href}><i className={`fa-solid fa-${icon}`} /><b>{t}</b><small>{sub}</small></Link>)}
         </nav>
       </div>
@@ -136,6 +141,14 @@ export default async function Home() {
         </div>
       </section>
 
+      {s.sdg_home !== 'no' && sdgOn && (
+        <section className="s sdgband">
+          <div className="wrap">
+            <div className="sh"><div><div className="eyebrow">Global goals, local action</div><h2>Sustainable Development Goals</h2></div><Link href="/sdg">Learn more →</Link></div>
+            <SdgGrid focus={s.sdg_focus} onlyFocus />
+          </div>
+        </section>)}
+
       <section className="cta-band">
         <div className="wrap">
           <h2>Enroll at {s.school_name}</h2>
@@ -146,6 +159,6 @@ export default async function Home() {
           </div>
         </div>
       </section>
-    </>
+    </div>
   );
 }

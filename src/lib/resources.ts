@@ -4,7 +4,7 @@ import { SECTIONS } from './sections';
 export type Field = {
   name: string;
   label: string;
-  type: 'text' | 'textarea' | 'markdown' | 'select' | 'checkbox' | 'datetime' | 'date' | 'number' | 'image' | 'url' | 'heading' | 'ref';
+  type: 'text' | 'textarea' | 'markdown' | 'select' | 'checkbox' | 'datetime' | 'date' | 'number' | 'image' | 'url' | 'heading' | 'ref' | 'sdg';
   // select options: plain text, or 'value|Label'
   options?: string[];
   optionsFrom?: 'groups';
@@ -41,6 +41,7 @@ export const RESOURCES: Record<string, Resource> = {
       { name: 'category', label: 'Category', type: 'select', options: ['News', 'Announcement', 'Events', 'Junior High School', 'Senior High School', 'Achievements', 'Research', 'Athletics', 'Alumni', 'Impact'], required: true },
       { name: 'group_id', label: 'Posted by (label)', type: 'ref', optionsFrom: 'groups', help: 'Leave on "School" for official news, or pick a group (student group, research center, publication…) to label the story with it.' },
       { name: 'tags', label: 'Tags', type: 'text', help: 'Comma separated, e.g. research, impact, athletics, alumni. Tags like these feed the topic pages.' },
+      { name: 'sdg', label: 'Related SDGs', type: 'sdg', help: 'Pick the Sustainable Development Goals this story supports. It then appears on the SDG page; group stories go to the SDG manager for approval before the publication manager.' },
       { name: 'excerpt', label: 'Short summary', type: 'textarea', help: 'Shown in lists and search results (about 150 characters).' },
       { name: 'content', label: 'Content', type: 'markdown' },
       { name: 'image', label: 'Cover image', type: 'image' },
@@ -133,9 +134,18 @@ export const SETTING_FIELDS: Field[] = [
   { name: 'map_embed', label: 'Google Maps embed URL', type: 'url' },
   { name: 'h_home', label: 'Home page', type: 'heading' },
   { name: 'home_hero', label: 'Home page top banner', type: 'select', options: ['carousel|Carousel (school intro + highlighted news with photos)', 'static|Static (single banner with logo)'], help: 'Carousel slides come from posts marked Main or Highlight that have a cover image.' },
+  { name: 'hero_image', label: 'Home hero photo (first slide / static banner background)', type: 'image' },
+  { name: 'hero_quote', label: 'Home hero quote (small italic text at top right, optional)', type: 'text' },
   { name: 'hero_title', label: 'Home hero title', type: 'text' },
   { name: 'hero_subtitle', label: 'Home hero text', type: 'textarea' },
   { name: 'home_eyebrow', label: 'Small text above the hero title', type: 'text' },
+  { name: 'h_video', label: 'Home: "Watch our story" button', type: 'heading' },
+  { name: 'hero_video_on', label: 'Show the button', type: 'select', options: ['yes|Show', 'no|Hide'] },
+  { name: 'hero_video_label', label: 'Button text', type: 'text' },
+  { name: 'hero_video_url', label: 'Video link or page', type: 'url', help: 'A YouTube link, or a page of this site such as /about/history. Leave empty to open the About page.' },
+  { name: 'hero_video_mode', label: 'When clicked', type: 'select', options: ['modal|Play the YouTube video in a pop-up', 'youtube|Open YouTube in a new tab', 'page|Go to a page / link'] },
+  { name: 'sdg_home', label: 'Show the SDG strip on the home page', type: 'select', options: ['yes|Show', 'no|Hide'], help: 'The SDG page itself is enabled or disabled under Admin → Pages (page "sdg"). The strip only appears when that page is enabled.' },
+  { name: 'sdg_focus', label: 'SDG focus goals (numbers, e.g. 4, 3, 13)', type: 'text', help: 'Goals the school focuses on. They are outlined on the SDG page and shown on the home page. Leave empty to show all 17 on the home page.' },
   { name: 'enrollment_note', label: 'Enrollment notice (home page)', type: 'textarea' },
   { name: 'community_name', label: 'Community name ("Serving the ___ community")', type: 'text' },
   { name: 'levels_text', label: 'Levels offered (sentence fragment)', type: 'text' },
@@ -162,10 +172,11 @@ for (const sec of SECTIONS.filter((x) => x.blocks.length)) {
       { name: 'description', label: 'Description', type: 'textarea' },
       { name: 'event_date', label: 'Date (used for sorting, year filter and charts)', type: 'date' },
       { name: 'tags', label: 'Tags (comma separated)', type: 'text' },
+      { name: 'sdg', label: 'Related SDGs', type: 'sdg', help: 'Goals this entry supports (shown as icons on the card).' },
       { name: 'group_id', label: 'Belongs to group (optional)', type: 'ref', optionsFrom: 'groups', help: 'Choose a research center, team or club so it also appears on that group\'s page.' },
       { name: 'featured', label: 'Featured (big banner on the page)', type: 'checkbox' },
       { name: 'image', label: 'Image', type: 'image' },
-      { name: 'url', label: 'Link (optional)', type: 'url' },
+      { name: 'url', label: 'Link (optional)', type: 'url', help: 'Makes the card clickable: paste an article path such as /news/your-story, a page, or an external link. Leave empty for a static card.' },
       { name: 'icon', label: 'Font Awesome icon name', type: 'text', help: 'e.g. users, flask, trophy, book. Used when there is no image.' },
       { name: 'sort', label: 'Display order', type: 'number' },
       { name: 'enabled', label: 'Visible', type: 'checkbox' },

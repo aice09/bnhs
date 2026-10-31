@@ -1,3 +1,4 @@
+import SdgPicker from '@/components/SdgPicker';
 import ImageField from '@/components/ImageField';
 import type { Field } from '@/lib/resources';
 
@@ -20,6 +21,7 @@ export default function FieldInput({ f, v }: { f: Field; v: any }) {
     case 'date': input = <input id={id} type="date" name={f.name} defaultValue={v ? new Date(v as string).toISOString().slice(0, 10) : ''} />; break;
     case 'datetime': input = <input id={id} type="datetime-local" name={f.name} defaultValue={localDT(v)} />; break;
     case 'number': input = <input id={id} type="number" name={f.name} defaultValue={v ?? 0} />; break;
+    case 'sdg': input = <SdgPicker name={f.name} initial={v ?? ''} />; break;
     case 'image': input = <ImageField name={f.name} initial={v ?? ''} required={f.required} />; break;
     default: input = <input id={id} type="text" name={f.name} defaultValue={v ?? ''} required={f.required} />;
   }

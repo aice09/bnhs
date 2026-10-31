@@ -72,21 +72,24 @@ export async function isPublicationManager(userId: number) {
   return !!(await one("SELECT 1 FROM group_members m JOIN groups g ON g.id=m.group_id WHERE m.user_id=$1 AND m.status='active' AND m.role='manager' AND g.dept='publication' AND g.status='approved'", [userId]));
 }
 
-// Where a submitted article goes next: group manager → publication manager → published.
-export async function routePost(user: Account, g: GroupRow, perms: Set<string>): Promise<{ status: string; stage: string }> {
+// Where a submitted article goes next: group manager → (SDG manager) → publication manager → published.
+// Articles tagged with SDGs get an extra stop at the SDG manager (unless written by the SDG Office itself).
+export async function routePost(user: Account, g: GroupRow, perms: Set<string>, sdg = ''): Promise<{ status: string; stage: string }> {
   if (hasPerm(user, 'posts') || g.auto_publish || (await isPublicationManager(user.id))) return { status: 'published', stage: '' };
-  if (g.dept === 'publication' || perms.has('publish')) return { status: 'pending', stage: 'publication' };
+  const needsSdg = !!sdg && g.dept !== 'sdg' && g.dept !== 'publication';
+  if (g.dept === 'publication' || perms.has('publish')) return { status: 'pending', stage: needsSdg ? 'sdg' : 'publication' };
   return { status: 'pending', stage: 'group' };
 }
 
-export type ReviewPost = { id: number; title: string; excerpt: string; content: string; stage: string; slug: string; group_name: string; group_slug: string; author: string | null; published_at: string };
+export type ReviewPost = { sdg: string; id: number; title: string; excerpt: string; content: string; stage: string; slug: string; group_name: string; group_slug: string; author: string | null; published_at: string };
 export async function reviewQueue(user: Account): Promise<ReviewPost[]> {
   const admin = hasPerm(user, 'posts');
   return query<ReviewPost>(
-    `SELECT p.id, p.title, p.excerpt, p.content, p.stage, p.slug, g.name AS group_name, g.slug AS group_slug, u.name AS author, p.published_at
+    `SELECT p.sdg, p.id, p.title, p.excerpt, p.content, p.stage, p.slug, g.name AS group_name, g.slug AS group_slug, u.name AS author, p.published_at
      FROM posts p JOIN groups g ON g.id = p.group_id LEFT JOIN users u ON u.id = p.author_id
      WHERE p.status = 'pending' AND ($2 OR
        (p.stage = 'group' AND EXISTS (SELECT 1 FROM group_members m WHERE m.user_id=$1 AND m.status='active' AND m.role='manager' AND (m.group_id = g.id OR m.group_id = g.parent_id))) OR
+       (p.stage = 'sdg' AND EXISTS (SELECT 1 FROM group_members m JOIN groups sg ON sg.id = m.group_id WHERE m.user_id=$1 AND m.status='active' AND m.role='manager' AND sg.dept='sdg')) OR
        (p.stage = 'publication' AND EXISTS (SELECT 1 FROM group_members m JOIN groups pg ON pg.id = m.group_id WHERE m.user_id=$1 AND m.status='active' AND m.role='manager' AND pg.dept='publication')))
      ORDER BY p.published_at`, [user.id, admin]);
 }

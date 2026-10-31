@@ -50,3 +50,8 @@ Image/file uploads are stored in `UPLOAD_DIR` and served from `/uploads/*`.
 - **Sample content:** `npm run db:samples` adds demo news, groups, facilities, projects, athletics and achievements with free photos (tagged `sample`); `npm run db:samples:remove` deletes them. Facebook could not be scraped, so samples are generic.
 - **Centralized entries:** items added by a group (research center, team, student group) in `/portal/groups/<slug>` show on the group page and on the school-wide page (research, athletics, student-groups, achievements, news) with a group label.
 - **Achievements:** CMS-editable (image, date, category, featured, spotlight) with filter board, by-year chart and featured banner.
+
+## Photo credits
+
+- `public/seed/ph-hs-2.jpg` (home hero): "Philippine students" by Roberto Verzo, CC BY 2.0, via Wikimedia Commons. Replace it in Admin → Settings → Home hero photo.
+- `public/seed/ph-hs-1.jpg`: US Peace Corps, public domain, via Wikimedia Commons.

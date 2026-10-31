@@ -10,6 +10,7 @@ import { sanitizeTheme } from '@/lib/theme';
 import { invalidateCache, rateLimit } from '@/lib/cache';
 import { normTags, slugify } from '@/lib/content';
 import { one, query } from '@/lib/db';
+import { normSdg } from '@/lib/sdg';
 import { RESOURCES, SETTING_FIELDS, type Field } from '@/lib/resources';
 
 export async function login(_: unknown, fd: FormData): Promise<{ error: string; email?: string; n?: number } | undefined> {
@@ -39,6 +40,7 @@ function value(f: Field, fd: FormData): unknown {
   if (f.type === 'checkbox') return raw === 'on';
   if (f.type === 'number') return Number(raw) || 0;
   if (f.type === 'ref') return raw ? Number(raw) || null : null;
+  if (f.type === 'sdg') return normSdg(raw);
   if (f.name === 'tags') return normTags(String(raw ?? ''));
   if (f.type === 'date') return raw ? String(raw) : null;
   if (f.type === 'datetime') return raw ? new Date(String(raw)).toISOString() : new Date().toISOString();

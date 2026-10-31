@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import VideoButton from './VideoButton';
 
 export type Slide = { key: string; kicker: string; title: string; text: string; image: string; href: string; cta: string };
 
-export default function HeroCarousel({ slides }: { slides: Slide[] }) {
+export default function HeroCarousel({ slides, video, quote }: { slides: Slide[]; video?: { label: string; url: string; mode: string } | null; quote?: string }) {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
   useEffect(() => {
@@ -22,9 +23,11 @@ export default function HeroCarousel({ slides }: { slides: Slide[] }) {
             <div className="eyebrow">{s.kicker}</div>
             <h1>{s.title}</h1>
             <p>{s.text}</p>
-            <div className="btns"><Link className="btn gold" href={s.href} tabIndex={n === i ? 0 : -1}>{s.cta} <i className="fa-solid fa-arrow-right" /></Link></div>
+            <div className="btns"><Link className="btn gold" href={s.href} tabIndex={n === i ? 0 : -1}>{s.cta} <i className="fa-solid fa-arrow-right" /></Link>{video && n === 0 && <VideoButton {...video} />}</div>
           </div>
+          {quote && n === 0 && <blockquote className="hquote">{quote}</blockquote>}
         </div>))}
+      <a className="hscroll" href="#after-hero" aria-label="Scroll down"><span>Scroll</span><i className="fa-solid fa-arrow-down" /></a>
       {slides.length > 1 && (
         <div className="hctl">
           <button type="button" onClick={() => go(i - 1)} aria-label="Previous slide"><i className="fa-solid fa-chevron-left" /></button>

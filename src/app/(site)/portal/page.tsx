@@ -67,7 +67,7 @@ export default async function Portal() {
         <div className="panel"><h2 style={{ marginTop: 0 }}>My news submissions</h2>
           <table className="tbl"><tbody>{posts.map((p) => (
             <tr key={p.id}><td>{p.status === 'published' ? <Link href={`/news/${p.slug}`}>{p.title}</Link> : p.title}<br /><small>{p.group_name}</small>{p.review_note && <><br /><small>Reviewer note: {p.review_note}</small></>}</td>
-              <td><span className={'badge' + (p.status === 'pending' ? ' warn' : p.status === 'rejected' ? ' bad' : '')}>{p.status === 'pending' ? (p.stage === 'group' ? 'awaiting group manager' : p.stage === 'publication' ? 'awaiting publication manager' : 'awaiting admin') : p.status}</span></td>
+              <td><span className={'badge' + (p.status === 'pending' ? ' warn' : p.status === 'rejected' ? ' bad' : '')}>{p.status === 'pending' ? (p.stage === 'sdg' ? 'awaiting SDG manager' : p.stage === 'group' ? 'awaiting group manager' : p.stage === 'publication' ? 'awaiting publication manager' : 'awaiting admin') : p.status}</span></td>
               <td><Link className="btn sm out" href={`/portal/groups/${p.group_slug}/posts/${p.id}`}>Edit</Link></td></tr>))}</tbody></table></div>)}
     </div>
   );

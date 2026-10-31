@@ -34,6 +34,7 @@ export function CardGrid({ items, hideGroup, detail }: { items: Item[]; hideGrou
               {it.meta && <span className="meta">{it.meta}</span>}
               <h3>{it.title}</h3>
               {it.description && <p>{it.description}</p>}
+              {it.sdg && <span className="sdg-mini">{it.sdg.split(',').map((n) => <img key={n} src={`/sdg/goal-${n}.jpg`} alt={`SDG ${n}`} width={28} height={28} />)}</span>}
               {it.group_name && !hideGroup && <span className="gchip"><i className="fa-solid fa-users" /> {it.group_name}</span>}
               {(it.url || detail) && <span className="more">{it.url ? 'Learn more' : 'View details'} <i className="fa-solid fa-arrow-right" /></span>}
             </div>

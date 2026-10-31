@@ -33,7 +33,7 @@ export default async function Workspace({ params, searchParams }: { params: Prom
     query('SELECT * FROM group_items WHERE group_id=$1 ORDER BY created_at DESC', [g.id]),
     query<any>(`SELECT p.id, p.title, p.status, p.stage, p.author_id, p.review_note, p.slug, u.name AS author FROM posts p LEFT JOIN users u ON u.id = p.author_id
       WHERE p.group_id=$1 ORDER BY p.published_at DESC LIMIT 30`, [g.id]),
-    query<any>("SELECT id, section, block, title, meta, category, extra, description, image, url, to_char(event_date,'YYYY-MM-DD') AS event_date, tags, featured, (SELECT string_agg(u.email, ', ') FROM item_people ip JOIN users u ON u.id=ip.user_id WHERE ip.item_id=items.id) AS credit FROM items WHERE group_id=$1 ORDER BY section, block, event_date DESC NULLS LAST, id DESC", [g.id]),
+    query<any>("SELECT id, section, block, title, meta, category, extra, description, image, url, to_char(event_date,'YYYY-MM-DD') AS event_date, tags, sdg, featured, (SELECT string_agg(u.email, ', ') FROM item_people ip JOIN users u ON u.id=ip.user_id WHERE ip.item_id=items.id) AS credit FROM items WHERE group_id=$1 ORDER BY section, block, event_date DESC NULLS LAST, id DESC", [g.id]),
     query<any>("SELECT m.user_id, u.name, u.email FROM group_members m JOIN users u ON u.id=m.user_id WHERE m.group_id=$1 AND m.status='pending' ORDER BY m.created_at", [g.id]),
     g.is_office ? query<any>(`SELECT id, slug, name, type, (SELECT count(*)::int FROM group_members m WHERE m.group_id=groups.id AND m.status='active') AS members,
         (SELECT u.name FROM group_members m JOIN users u ON u.id=m.user_id WHERE m.group_id=groups.id AND m.status='active' AND m.role='manager' LIMIT 1) AS coach
@@ -73,7 +73,7 @@ export default async function Workspace({ params, searchParams }: { params: Prom
             const editable = can('post') && (mine || can('publish'));
             return (
               <tr key={p.id}><td>{p.status === 'published' ? <Link href={`/news/${p.slug}`}>{p.title}</Link> : p.title}<br /><small>{p.author || ''}</small>{p.review_note && <><br /><small>Note: {p.review_note}</small></>}</td>
-                <td><span className={'badge' + (p.status === 'pending' ? ' warn' : p.status === 'rejected' ? ' bad' : '')}>{p.status === 'pending' ? (p.stage === 'group' ? 'awaiting group manager' : p.stage === 'publication' ? 'awaiting publication manager' : 'awaiting admin') : p.status}</span></td>
+                <td><span className={'badge' + (p.status === 'pending' ? ' warn' : p.status === 'rejected' ? ' bad' : '')}>{p.status === 'pending' ? (p.stage === 'group' ? 'awaiting group manager' : p.stage === 'sdg' ? 'awaiting SDG manager' : p.stage === 'publication' ? 'awaiting publication manager' : 'awaiting admin') : p.status}</span></td>
                 <td className="row">{editable && <Link className="btn sm out" href={`/portal/groups/${slug}/posts/${p.id}`}>Edit</Link>}
                   {editable && <form action={deleteGroupPost.bind(null, slug, p.id)}><button className="btn sm danger" aria-label="Delete"><i className="fa-solid fa-trash" /></button></form>}</td></tr>);
           })}</tbody></table>)}

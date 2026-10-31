@@ -21,14 +21,15 @@ export default async function Review({ searchParams }: { searchParams: Promise<{
         <form key={p.id} action={reviewPost.bind(null, p.id)} className="panel">
           <div className="row" style={{ justifyContent: 'space-between' }}>
             <h3 style={{ margin: 0 }}>{p.title}</h3>
-            <span className="badge warn">{p.stage === 'group' ? 'Step 1: group manager' : p.stage === 'publication' ? 'Step 2: publication manager' : 'Admin'}</span>
+            <span className="badge warn">{p.stage === 'group' ? 'Step 1: group manager' : p.stage === 'sdg' ? 'SDG manager' : p.stage === 'publication' ? 'Step 2: publication manager' : 'Admin'}</span>
           </div>
           <p className="help">{p.group_name} · by {p.author ?? 'unknown'} </p>
+          {p.sdg && <p className="help">SDGs: {p.sdg.split(',').map((n) => `SDG ${n}`).join(', ')}</p>}
           {p.excerpt && <p>{p.excerpt}</p>}
           <details style={{ margin: '0 0 10px' }}><summary>Read the full article</summary><div style={{ whiteSpace: 'pre-line', marginTop: 8 }}>{p.content}</div></details>
           <div className="row">
             <input name="note" placeholder="Note to the writer (when returning)" style={{ flex: 1, minWidth: 220 }} />
-            <button className="btn sm" name="decision" value="approve"><i className="fa-solid fa-check" /> {p.stage === 'group' ? 'Approve → publication' : 'Approve & publish'}</button>
+            <button className="btn sm" name="decision" value="approve"><i className="fa-solid fa-check" /> {p.stage === 'group' ? (p.sdg ? 'Approve → next step' : 'Approve → publication') : p.stage === 'sdg' ? 'Approve → publication' : 'Approve & publish'}</button>
             <button className="btn sm danger" name="decision" value="reject">Return</button>
           </div>
         </form>))}

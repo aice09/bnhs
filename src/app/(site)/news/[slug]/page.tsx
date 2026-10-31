@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import PageHero from '@/components/PageHero';
 import { fmtDate, renderMarkdown } from '@/lib/content';
 import { splitTags } from '@/lib/content';
+import { SdgChips } from '@/components/SdgGrid';
 import ShareBar from '@/components/ShareBar';
 import { adjacentPosts, bumpViews, getPost, getSettings, relatedPosts } from '@/lib/queries';
 import { siteUrl } from '@/lib/site';
@@ -54,6 +55,7 @@ export default async function PostPage({ params }: Props) {
             </div>
             {post.image && <img src={post.image} alt={post.title} style={{ width: '100%', borderRadius: 10, marginBottom: 20 }} />}
             <article className="prose" dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }} />
+            {post.sdg && <><b className="help">Supports the Sustainable Development Goals</b><SdgChips sdg={post.sdg} /></>}
             {tags.length > 0 && <div className="tagrow big"><i className="fa-solid fa-tags" /> {tags.map((t) => <Link key={t} href={`/news?tag=${t}`}>#{t}</Link>)}</div>}
             <ShareBar url={`${site}/news/${post.slug}`} title={post.title} />
             {(prev || next) && (

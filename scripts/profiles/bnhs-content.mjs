@@ -179,6 +179,12 @@ Teams, schedules and results will be posted here and in the [News](/news) sectio
     title: 'Our Impact', menu: 'about', sort: 8, enabled: true, subtitle: 'Education that serves the Bolo Norte community',
     content: `Bolo Norte National High School exists so that young people in Bolo Norte and nearby barangays can finish basic education close to home. This page highlights how the school serves its learners and community. School leaders can update the figures, programs and stories in the CMS (Admin → Impact), and tag news posts with **impact** to feature them here.`,
   },
+  sdg: {
+    title: 'Sustainable Development Goals', menu: 'about', sort: 9, enabled: true, subtitle: 'Our commitment to the UN 2030 agenda',
+    content: `Bolo Norte National High School supports the United Nations Sustainable Development Goals, especially **SDG 4: Quality Education**, by giving young people in Bolo Norte and nearby barangays access to basic education close to home.
+
+Our learners, teachers and student groups take part in activities on health, environment, community service and learning for life. Projects are listed below as they are added by the SDG Office.`,
+  },
   scholarships: {
     title: 'Scholarships', menu: 'admissions', sort: 1, enabled: false, subtitle: 'Support for deserving learners',
     content: `Information about scholarships, grants and financial assistance available to BNNHS learners.
@@ -209,6 +215,11 @@ We welcome partners for learner immersion, donations, training, scholarships and
 };
 
 export const ITEMS = {
+  sdg: [
+    ['Learning close to home', 'Ongoing · SDG 4', 'Junior and Senior High School education for learners of Bolo Norte and nearby barangays.', 'book-open', 'projects'],
+    ['Campus clean-up and tree care', 'Student groups · SDG 13, 15', 'Learners and volunteers keep the school and its surroundings clean and green.', 'leaf', 'projects'],
+    ['Science and innovation showcase', 'Research Center · SDG 9', 'Learners present investigatory projects that solve everyday problems.', 'flask', 'projects'],
+  ],
   facts: [
     ['Year established', '2004', 'Founded as an extension of Sipocot National High School.', 'calendar', 'key-facts'],
     ['Grade levels', '7–12', 'Junior High School and Senior High School.', 'graduation-cap', 'key-facts'],

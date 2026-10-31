@@ -55,6 +55,9 @@ export const SECTIONS: Section[] = [
     { key: 'events', title: 'Alumni events', layout: 'schedule', groups: true, hint: 'Title = event, Meta = date, Category = type, Extra = venue.' },
     { key: 'opportunities', title: 'Career opportunities', layout: 'list', groups: true, hint: 'Title = job / mentorship, Meta = company, Category = type, Extra = location, Link = how to apply.' },
   ] },
+  { key: 'sdg', label: 'SDG', icon: 'earth-asia', singular: 'SDG project', menu: 'about', optional: true, newsTags: ['sdg', 'sustainability'], blocks: [
+    { key: 'projects', title: 'SDG projects & activities', layout: 'cards', groups: true, hint: 'Title = project, Meta = year / partner, Category = goal (e.g. SDG 4), Description = what was done, Image = photo, Link = more info.' },
+  ] },
   { key: 'scholarships', label: 'Scholarships', icon: 'hand-holding-dollar', singular: 'Scholarship', menu: 'admissions', optional: true, blocks: [
     { key: 'programs', title: 'Scholarship programs', layout: 'cards', hint: 'Title = program, Meta = provider, Description = who can apply.' },
   ], cta: { label: 'Ask about scholarships', href: '/contact', icon: 'circle-question' } },
@@ -70,7 +73,7 @@ export const ABOUT_SLUGS = ['about-us', 'history', 'mission-vision', 'philosophy
 
 // Where a group of a given type can publish entries (its own page + the school-wide page).
 const OFFICE_SECTIONS: Record<string, string[]> = {
-  research: ['research', 'innovation'], athletics: ['athletics'], sgo: ['student-groups'], 'student-groups': ['student-groups'], alumni: ['alumni'], library: ['library'],
+  research: ['research', 'innovation'], athletics: ['athletics'], sgo: ['student-groups'], 'student-groups': ['student-groups'], alumni: ['alumni'], library: ['library'], sdg: ['sdg'],
 };
 export function groupBlocks(type: string, dept = '', isOffice = false): { section: string; block: Block; label: string }[] {
   const out: { section: string; block: Block; label: string }[] = [];

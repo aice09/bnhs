@@ -65,6 +65,7 @@ export const PAGES = {
   athletics: { title: 'Athletics', menu: 'student-life', sort: 1, enabled: true, subtitle: 'Building character, discipline and teamwork', content: todo('Describe the sports program.') },
   'student-groups': { title: 'Student Groups', menu: 'student-life', sort: 2, enabled: true, subtitle: 'Organizations that build leadership and service', content: todo('Student organizations are managed under Admin → Groups.') },
   alumni: { title: 'Alumni', menu: 'student-life', sort: 3, enabled: true, subtitle: `Once a ${SHORT} learner, always part of the family`, content: todo('Welcome alumni back.') },
+  sdg: { title: 'Sustainable Development Goals', menu: 'about', sort: 9, enabled: false, subtitle: 'Our commitment to the UN 2030 agenda', content: todo('Explain how the school contributes to the SDGs, then enable this page.') },
   scholarships: { title: 'Scholarships', menu: 'admissions', sort: 1, enabled: false, subtitle: 'Support for deserving learners', content: todo('List scholarship programs and requirements, then enable this page.') },
   partnerships: { title: 'Partnerships', menu: '', sort: 1, enabled: false, subtitle: 'Working together for our learners', content: todo('List partners and how to collaborate, then enable this page.') },
 };

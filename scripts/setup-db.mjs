@@ -58,6 +58,8 @@ ALTER TABLE pages ADD COLUMN IF NOT EXISTS sort int NOT NULL DEFAULT 0;
 ALTER TABLE pages ADD COLUMN IF NOT EXISTS image text NOT NULL DEFAULT '';
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS placement text NOT NULL DEFAULT 'Normal';
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'published';
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS sdg text NOT NULL DEFAULT '';
+ALTER TABLE items ADD COLUMN IF NOT EXISTS sdg text NOT NULL DEFAULT '';
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS tags text NOT NULL DEFAULT '';
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS author_id int;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS group_id int;
@@ -148,6 +150,7 @@ const OFFICES = [
   ['student-groups-office', 'Student Groups Office', 'student-groups', 'people-group', ['Student Organization', 'Academic Club', 'Arts & Culture', 'Community Service', 'Other'], false],
   ['library-office', 'Library', 'library', 'book-open', [], true],
   ['admission-office', 'Admission Office', 'admission', 'clipboard-check', [], false],
+  ['sdg-office', 'SDG Office', 'sdg', 'earth-asia', [], false],
 ];
 for (const [slug, name, dept, icon, childTypes, listed] of OFFICES) {
   await q(`INSERT INTO groups(slug,name,type,icon,dept,is_office,listed,summary) VALUES($1,$2,'Office',$3,$4,true,$5,$6) ON CONFLICT (slug) DO NOTHING`,
@@ -155,6 +158,8 @@ for (const [slug, name, dept, icon, childTypes, listed] of OFFICES) {
   if (childTypes.length)
     await q(`UPDATE groups SET parent_id=(SELECT id FROM groups WHERE slug=$1), dept=$2 WHERE parent_id IS NULL AND NOT is_office AND type = ANY($3)`, [slug, dept, childTypes]);
 }
+for (const [k, v] of Object.entries({"sdg_home": "yes", "sdg_focus": "", "hero_image": "/seed/ph-hs-2.jpg", "hero_quote": "Learning. Character. Community. For every learner of Bolo Norte.", "hero_video_on": "yes", "hero_video_label": "Watch our story", "hero_video_url": "", "hero_video_mode": "modal"}))
+  await q('INSERT INTO settings(key,value) VALUES($1,$2) ON CONFLICT DO NOTHING', [k, v]);
 await q(`INSERT INTO settings(key,value) VALUES('avatar_style','none'),('home_hero','carousel') ON CONFLICT DO NOTHING`);
 if (needPostStatus) await q("UPDATE posts SET status = CASE WHEN published THEN 'published' ELSE 'draft' END");
 

@@ -51,6 +51,7 @@ export const DEPTS: Record<string, { name: string; childLabel: string; childType
   alumni: { name: 'Alumni', childLabel: '', childType: '' },
   library: { name: 'Library', childLabel: '', childType: '' },
   admission: { name: 'Admission', childLabel: '', childType: '' },
+  sdg: { name: 'SDG', childLabel: '', childType: '' },
 };
 
 export type Account = { id: number; email: string; name: string; role: string; status: string; permissions: string[] };

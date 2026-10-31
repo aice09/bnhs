@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { invalidateCache, rateLimit } from '@/lib/cache';
 import { normTags, slugify } from '@/lib/content';
+import { normSdg } from '@/lib/sdg';
 import { one, query } from '@/lib/db';
 import { accessFor, addMember, managerCount, removeMember, reviewQueue, routePost, saveMember } from '@/lib/groups';
 import { DEPTS, GROUP_PERMS, GROUP_ROLES, hasPerm } from '@/lib/perms';
@@ -100,12 +101,12 @@ export async function saveGroupEntry(slug: string, id: string, fd: FormData) {
   const url = str(fd, 'url', 400), image = str(fd, 'image', 300);
   const date = /^\d{4}-\d{2}-\d{2}$/.test(str(fd, 'event_date', 10)) ? str(fd, 'event_date', 10) : null;
   const v = [target.section, target.block.key, title, str(fd, 'meta', 120), str(fd, 'category', 80), str(fd, 'extra', 160), str(fd, 'description', 2000),
-    /^(\/|https:\/\/)/.test(image) ? image : '', /^(https?:\/\/|\/)/.test(url) ? url : '', date, normTags(str(fd, 'tags', 200)), fd.get('featured') === 'on' && perms.has('publish')];
+    /^(\/|https:\/\/)/.test(image) ? image : '', /^(https?:\/\/|\/)/.test(url) ? url : '', date, normTags(str(fd, 'tags', 200)), fd.get('featured') === 'on' && perms.has('publish'), normSdg(str(fd, 'sdg', 60))];
   let itemId = Number(id);
   if (id === 'new')
-    itemId = (await one<{ id: number }>(`INSERT INTO items(section,block,title,meta,category,extra,description,image,url,event_date,tags,featured,group_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`, [...v, group.id]))!.id;
+    itemId = (await one<{ id: number }>(`INSERT INTO items(section,block,title,meta,category,extra,description,image,url,event_date,tags,featured,sdg,group_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`, [...v, group.id]))!.id;
   else
-    await query(`UPDATE items SET section=$1,block=$2,title=$3,meta=$4,category=$5,extra=$6,description=$7,image=$8,url=$9,event_date=$10,tags=$11,featured=$12 WHERE id=$14 AND group_id=$13`, [...v, group.id, itemId]);
+    await query(`UPDATE items SET section=$1,block=$2,title=$3,meta=$4,category=$5,extra=$6,description=$7,image=$8,url=$9,event_date=$10,tags=$11,featured=$12,sdg=$13 WHERE id=$15 AND group_id=$14`, [...v, group.id, itemId]);
   // credit members so the item shows on their profiles
   const emails = str(fd, 'credit', 600).split(/[,\s;]+/).filter((e) => /^\S+@\S+$/.test(e)).map((e) => e.toLowerCase());
   if (id !== 'new' || emails.length) {
@@ -166,9 +167,10 @@ export async function saveGroupPost(slug: string, id: string, fd: FormData) {
   const excerpt = str(fd, 'excerpt', 300) || content.replace(/[#*_>`\[\]()!-]/g, '').slice(0, 150);
   const category = ['News', 'Announcement', 'Events', 'Achievements', 'Research', 'Athletics', 'Alumni', 'Impact'].includes(str(fd, 'category')) ? str(fd, 'category') : 'News';
   const tags = normTags(str(fd, 'tags', 200));
+  const sdg = normSdg(str(fd, 'sdg', 60));
   const image = /^(\/uploads\/|https:\/\/)/.test(str(fd, 'image', 300)) ? str(fd, 'image', 300) : '';
   const wantsPublish = fd.get('submit') === 'publish';
-  const route = wantsPublish ? await routePost(user, group, perms) : { status: 'draft', stage: '' };
+  const route = wantsPublish ? await routePost(user, group, perms, sdg) : { status: 'draft', stage: '' };
   const status = route.status;
   const published = status === 'published';
 
@@ -177,19 +179,19 @@ export async function saveGroupPost(slug: string, id: string, fd: FormData) {
     let s = base, n = 2;
     while (await one('SELECT 1 FROM posts WHERE slug=$1', [s])) s = `${base}-${n++}`;
     await query(
-      `INSERT INTO posts(slug,title,category,excerpt,content,image,tags,group_id,author_id,status,published,published_at,placement,stage)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,now(),'Normal',$12)`,
-      [s, title, category, excerpt, content, image, tags, group.id, user.id, status, published, route.stage]);
+      `INSERT INTO posts(slug,title,category,excerpt,content,image,tags,group_id,author_id,status,published,published_at,placement,stage,sdg)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,now(),'Normal',$12,$13)`,
+      [s, title, category, excerpt, content, image, tags, group.id, user.id, status, published, route.stage, sdg]);
   } else {
     const row = await one<{ author_id: number | null; status: string }>('SELECT author_id, status FROM posts WHERE id=$1 AND group_id=$2', [Number(id), group.id]);
     if (!row) redirect(`/portal/groups/${slug}`);
     // authors edit their own work; managers/admins edit anything in the group
     if (row.author_id !== user.id && !perms.has('publish') && !admin) redirect(`/portal/groups/${slug}?denied=1`);
     // edits to live articles go back through the approval chain unless the editor can publish
-    const next = row.status === 'published' && status === 'draft' ? await routePost(user, group, perms) : route;
+    const next = row.status === 'published' && status === 'draft' ? await routePost(user, group, perms, sdg) : route;
     await query(
-      `UPDATE posts SET title=$2,category=$3,excerpt=$4,content=$5,image=$6,tags=$7,status=$8,published=$9,stage=$10,review_note='' WHERE id=$1`,
-      [Number(id), title, category, excerpt, content, image, tags, next.status, next.status === 'published', next.stage]);
+      `UPDATE posts SET title=$2,category=$3,excerpt=$4,content=$5,image=$6,tags=$7,status=$8,published=$9,stage=$10,sdg=$11,review_note='' WHERE id=$1`,
+      [Number(id), title, category, excerpt, content, image, tags, next.status, next.status === 'published', next.stage, sdg]);
   }
   await invalidateCache();
   back(slug, status === 'pending' ? 'submitted' : 'saved');
@@ -215,6 +217,10 @@ export async function reviewPost(id: number, fd: FormData) {
   if (fd.get('decision') === 'reject') {
     await query("UPDATE posts SET status='rejected', published=false, review_note=$2 WHERE id=$1", [id, note || 'Returned by reviewer']);
   } else if (post.stage === 'group' && !hasPerm(user, 'posts')) {
+    const gd = await one<{ dept: string }>('SELECT g.dept FROM posts p JOIN groups g ON g.id=p.group_id WHERE p.id=$1', [id]);
+    const next = post.sdg && gd?.dept !== 'sdg' ? 'sdg' : 'publication';
+    await query('UPDATE posts SET stage=$2, review_note=$3 WHERE id=$1', [id, next, '']);
+  } else if (post.stage === 'sdg' && !hasPerm(user, 'posts')) {
     await query("UPDATE posts SET stage='publication', review_note='' WHERE id=$1", [id]);
   } else {
     await query("UPDATE posts SET status='published', published=true, stage='', published_at=now(), review_note='' WHERE id=$1", [id]);
