@@ -1,0 +1,48 @@
+{
+  "name": "school-website-cms",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:setup": "node scripts/setup-db.mjs",
+    "db:samples": "node scripts/samples.mjs",
+    "db:samples:remove": "node scripts/samples.mjs --remove",
+    "db:backup": "node scripts/backup.mjs",
+    "db:restore": "node scripts/restore.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1161.0",
+    "@dicebear/collection": "^9.4.2",
+    "@dicebear/core": "^9.4.3",
+    "@fortawesome/fontawesome-free": "^7.3.1",
+    "@multiavatar/multiavatar": "^1.0.7",
+    "bcryptjs": "^3.0.3",
+    "datatables.net": "^3.1.5",
+    "datatables.net-dt": "^3.1.5",
+    "ioredis": "^6.0.0",
+    "jose": "^6.2.14",
+    "jquery": "^4.0.0",
+    "marked": "^18.1.2",
+    "next": "^15.5.28",
+    "pg": "^8.23.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "sanitize-html": "^2.18.1",
+    "slugify": "^1.6.9"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
+    "@types/jquery": "^4.0.1",
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/sanitize-html": "^2.16.2",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=26.13.0"
+  }
+}

@@ -1,0 +1,14 @@
+node_modules
+.next
+.env.local
+uploads/*
+!uploads/.gitkeep
+*.tsbuildinfo
+next-env.d.ts
+backups/*
+!backups/.gitkeep
+.env
+.env.*
+!.env.example
+*.sql
+*.sql.gz
